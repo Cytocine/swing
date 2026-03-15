@@ -119,6 +119,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
 .li{display:flex;align-items:center;gap:4px;}
 .ld{width:10px;height:2px;border-radius:1px;}
 
+.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
 #cw{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
 #cw canvas{display:block;}
 #tip{position:absolute;background:rgba(7,10,15,.97);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;display:none;z-index:20;line-height:1.9;min-width:140px;backdrop-filter:blur(8px);}
@@ -291,8 +292,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
 #btn-topbar-scan{background:linear-gradient(135deg,rgba(38,166,154,0.12),rgba(99,102,241,0.12));border:1px solid rgba(38,166,154,0.3);border-radius:6px;color:#26A69A;font-family:var(--fm);font-size:9px;font-weight:700;padding:5px 12px;cursor:pointer;letter-spacing:.8px;transition:all .15s;}
 #btn-topbar-scan:hover{background:linear-gradient(135deg,rgba(38,166,154,0.25),rgba(99,102,241,0.25));}
 #btn-topbar-scan:disabled{opacity:.4;cursor:not-allowed;}
+/* ── SPLIT VIEW ── */
+#charts-row{flex:1;display:flex;gap:0;overflow:hidden;min-height:0;}
+.chart-panel{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;}
+.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
+.cw-wrap canvas{display:block;}
+.panel-label{font-size:8px;font-weight:700;letter-spacing:1.5px;color:var(--muted);padding:3px 0 4px;text-align:center;flex-shrink:0;}
+#panel-a .panel-label{color:var(--bull);}
+#panel-b .panel-label{color:#818cf8;}
+#split-divider{width:6px;flex-shrink:0;display:none;cursor:col-resize;background:transparent;position:relative;}
+#split-divider::after{content:'';position:absolute;left:2px;top:10%;bottom:10%;width:2px;background:rgba(255,255,255,0.06);border-radius:1px;}
+#split-divider:hover::after{background:rgba(38,166,154,0.4);}
+body.split-mode #split-divider{display:block;}
+body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
+#tip2{position:absolute;background:rgba(7,10,15,.97);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;display:none;z-index:20;line-height:1.9;min-width:140px;backdrop-filter:blur(8px);}
 </style>
-</head>
 <body>
 
 <!-- CREDENTIALS BAR -->
@@ -319,6 +333,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
     <button class="tf-btn" data-tf="1Day">1D</button>
     <button class="tf-btn active" data-tf="1Hour">1H</button>
   </div>
+  <button class="tb" id="btn-split" title="Toggle 1H + 1D side by side">⊞ SPLIT</button>
   <button class="tb" id="btn-reload" disabled>↺ RELOAD</button>
   <div id="ts">
     <div class="tss"><div class="tsl">TICKER</div><div class="tsv" id="ts-t">—</div></div>
@@ -393,12 +408,30 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
         <div class="li"><span style="color:#f87171">▽</span><span>PB S</span></div>
       </div>
     </div>
-    <div id="cw">
-      <canvas id="cv"></canvas>
-      <div id="tip"></div>
-      <div id="ov" class="show">
-        <div class="sp"></div>
-        <div class="ov-t" id="ov-t">ENTER CREDENTIALS TO BEGIN</div>
+
+    <!-- Chart area: single or split -->
+    <div id="charts-row">
+      <!-- Panel A: always shown (single = full width, split = left half) -->
+      <div class="chart-panel" id="panel-a">
+        <div class="panel-label" id="panel-a-lbl">1H</div>
+        <div class="cw-wrap" id="cw">
+          <canvas id="cv"></canvas>
+          <div id="tip"></div>
+          <div id="ov" class="show">
+            <div class="sp"></div>
+            <div class="ov-t" id="ov-t">ENTER CREDENTIALS TO BEGIN</div>
+          </div>
+        </div>
+      </div>
+      <!-- Divider (only visible in split mode) -->
+      <div id="split-divider"></div>
+      <!-- Panel B: only shown in split mode (right half = 1D) -->
+      <div class="chart-panel" id="panel-b" style="display:none">
+        <div class="panel-label" id="panel-b-lbl">1D</div>
+        <div class="cw-wrap" id="cw2">
+          <canvas id="cv2"></canvas>
+          <div id="tip2"></div>
+        </div>
       </div>
     </div>
     <div id="mini-wrap">
@@ -657,12 +690,15 @@ async function fetchBars(ticker, tf) {
 
 async function loadAll(clearCache=false) {
   if (!connected) return;
-  // Combine sidebar + scanner into one deduped fetch batch
   const allSymbols = [...new Set([...tickers, ...scannerTickers])];
-  if (clearCache) allSymbols.forEach(t=>delete cache[t+'|'+timeframe]);
+  // In split mode fetch both 1H and 1D; otherwise just the active TF
+  const tfsToLoad = splitMode ? ['1Hour','1Day'] : [timeframe];
+  if (clearCache) allSymbols.forEach(t=>tfsToLoad.forEach(tf=>delete cache[t+'|'+tf]));
   setOv(true,'FETCHING '+allSymbols.length+' SYMBOLS…');
   document.getElementById('btn-reload').disabled = true;
-  await Promise.allSettled(allSymbols.map(t=>fetchBars(t,timeframe)));
+  await Promise.allSettled(
+    allSymbols.flatMap(t => tfsToLoad.map(tf => fetchBars(t, tf)))
+  );
   document.getElementById('btn-reload').disabled = false;
   setOv(false);
   refresh();
@@ -799,7 +835,8 @@ function computeSignals(candles) {
 //   PB_Long     = Color.LIME               = #00FF00
 //   PB_Short    = Color.RED                = #FF0000
 
-function drawChart(ctx, candles, signals, W, H, isMain) {
+function drawChart(ctx, candles, signals, W, H, isMain, chartTf) {
+  const tf = chartTf || timeframe;
   const PAD = {top:14, right:14, bottom: isMain?32:4, left: isMain?68:4};
   const cW = W-PAD.left-PAD.right;
   const cH = H-PAD.top-PAD.bottom;
@@ -843,7 +880,7 @@ function drawChart(ctx, candles, signals, W, H, isMain) {
       ctx.beginPath(); ctx.moveTo(X(i),PAD.top); ctx.lineTo(X(i),PAD.top+cH); ctx.stroke();
       ctx.fillStyle   = 'rgba(255,255,255,0.2)';
       ctx.textAlign   = 'center';
-      ctx.fillText(candles[i].time ? fmtTime(candles[i].time,timeframe) : (i-n)+'', X(i), H-PAD.bottom+12);
+      ctx.fillText(candles[i].time ? fmtTime(candles[i].time,tf) : (i-n)+'', X(i), H-PAD.bottom+12);
     }
   }
 
@@ -996,25 +1033,33 @@ function drawChart(ctx, candles, signals, W, H, isMain) {
   });
 }
 
-function renderMain() {
-  const wrap = document.getElementById('cw');
-  const cv   = document.getElementById('cv');
-  const dpr  = window.devicePixelRatio||1;
-  const W    = wrap.clientWidth;
-  const H    = wrap.clientHeight;
-  cv.width   = W*dpr; cv.height = H*dpr;
-  cv.style.width=W+'px'; cv.style.height=H+'px';
-  const ctx  = cv.getContext('2d');
-  ctx.scale(dpr,dpr);
+let splitMode = false;
 
-  const d = cache[selected+'|'+timeframe];
+function renderPanel(wrapId, canvasId, tf) {
+  const wrap = document.getElementById(wrapId);
+  const cv   = document.getElementById(canvasId);
+  if (!wrap || !cv) return;
+  const dpr = window.devicePixelRatio||1;
+  const W   = wrap.clientWidth;
+  const H   = wrap.clientHeight;
+  if (W < 2 || H < 2) return;
+  cv.width  = W*dpr; cv.height = H*dpr;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const d = cache[selected+'|'+tf];
   if (!d) {
     ctx.fillStyle='#080b10'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.font='11px "Space Mono"'; ctx.textAlign='center';
-    ctx.fillText(connected?'SELECT A TICKER':'ENTER CREDENTIALS TO CONNECT', W/2, H/2);
+    ctx.fillText(connected ? (tf==='1Hour'?'1H':'1D')+' — NO DATA' : 'ENTER CREDENTIALS TO CONNECT', W/2, H/2);
     return;
   }
-  drawChart(ctx, d.candles, d.signals, W, H, true);
+  drawChart(ctx, d.candles, d.signals, W, H, true, tf);
+}
+
+function renderMain() {
+  renderPanel('cw', 'cv', splitMode ? '1Hour' : timeframe);
+  if (splitMode) renderPanel('cw2', 'cv2', '1Day');
 }
 
 function drawMini(canvas, ticker) {
@@ -1045,7 +1090,9 @@ function fmtTime(iso, tf) {
 }
 
 function sInfo(ticker) {
-  const d = cache[ticker+'|'+timeframe];
+  // In split mode the sidebar/status reflects the primary (1H) timeframe
+  const tf = splitMode ? '1Hour' : timeframe;
+  const d = cache[ticker+'|'+tf] || cache[ticker+'|'+timeframe];
   if (!d) return {ok:false,status:'FLAT',sc:'flat',chg:0,price:0,last:null};
   const {candles,signals} = d;
   const last  = signals[signals.length-1];
@@ -1254,11 +1301,12 @@ function updateHeader() {
   const ce=document.getElementById('ch-chg');
   ce.textContent=ok?(chg>=0?'+':'')+chg.toFixed(2)+'%':'—';
   ce.className='chg-'+(chg>=0?'bull':'bear');
-  document.getElementById('ch-tf').textContent=timeframe==='1Hour'?'1H':'1D';
-  const d=cache[selected+'|'+timeframe];
+  document.getElementById('ch-tf').textContent = splitMode ? '1H | 1D' : (timeframe==='1Hour'?'1H':'1D');
+  const activeTf = splitMode ? '1Hour' : timeframe;
+  const d = cache[selected+'|'+activeTf];
   if(d){
     const lt=d.candles[d.candles.length-1].time;
-    document.getElementById('ch-upd').textContent='LAST: '+fmtTime(lt,timeframe);
+    document.getElementById('ch-upd').textContent='LAST: '+fmtTime(lt,activeTf);
     const ls=d.signals.filter(s=>s.signalLong).length;
     const ss=d.signals.filter(s=>s.signalShort).length;
     document.getElementById('ts-sig').textContent=ls+'L / '+ss+'S';
@@ -1285,10 +1333,18 @@ function updateSB() {
 function refresh() { buildSidebar(); buildMini(); updateHeader(); updateSB(); renderMain(); }
 
 async function selectTicker(t) {
-  selected=t;
-  const key=t+'|'+timeframe;
-  if(!cache[key]&&connected) await loadOne(t);
-  else refresh();
+  selected = t;
+  if (connected) {
+    const toLoad = splitMode
+      ? ['1Hour','1Day'].filter(tf=>!cache[t+'|'+tf])
+      : (cache[t+'|'+timeframe] ? [] : [timeframe]);
+    if (toLoad.length) {
+      setOv(true,'LOADING '+t+'…');
+      await Promise.allSettled(toLoad.map(tf=>fetchBars(t,tf)));
+      setOv(false);
+    }
+  }
+  refresh();
 }
 
 // ═══════════════════════════════════════════
@@ -1300,7 +1356,8 @@ async function selectTicker(t) {
     const rect=wrap.getBoundingClientRect(),mx=e.clientX-rect.left;
     const W=wrap.clientWidth,H=wrap.clientHeight;
     const PAD={top:14,right:14,bottom:32,left:68};
-    const d=cache[selected+'|'+timeframe]; if(!d){tip.style.display='none';return;}
+    const activeTf = splitMode ? '1Hour' : timeframe;
+    const d=cache[selected+'|'+activeTf]; if(!d){tip.style.display='none';return;}
     const{candles,signals}=d,n=candles.length;
     const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
     if(idx<0||idx>=n){tip.style.display='none';return;}
@@ -1309,7 +1366,7 @@ async function selectTicker(t) {
     const chg=idx>0?((c.close-candles[idx-1].close)/candles[idx-1].close*100):0;
     const cloudSide = s.es>=s.el ? '<span style="color:#26A69A">▲ BULL</span>' : '<span style="color:#EF5350">▼ BEAR</span>';
     tip.innerHTML=
-      `<div style="color:#64748b;font-size:8px;margin-bottom:5px">${selected} · ${c.time?fmtTime(c.time,timeframe):'BAR '+(idx-n)}</div>`+
+      `<div style="color:#64748b;font-size:8px;margin-bottom:5px">${selected} · ${activeTf==='1Hour'?'1H':'1D'} · ${c.time?fmtTime(c.time,activeTf):'BAR '+(idx-n)}</div>`+
       `<div>O <b style="color:#e2e8f0">${c.open.toFixed(2)}</b>  H <b style="color:#26A69A">${c.high.toFixed(2)}</b></div>`+
       `<div>L <b style="color:#EF5350">${c.low.toFixed(2)}</b>  C <b style="color:#e2e8f0">${c.close.toFixed(2)}</b></div>`+
       `<div style="color:${chg>=0?'#26A69A':'#EF5350'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%  ${(c.vol/1e6).toFixed(2)}M</div>`+
@@ -1388,6 +1445,66 @@ document.getElementById('btn-list').addEventListener('click',()=>{
   document.getElementById('btn-list').textContent=sidebarVisible?'◀ HIDE':'▶ LIST';
   setTimeout(renderMain,220);
 });
+
+// ── SPLIT VIEW ──
+document.getElementById('btn-split').addEventListener('click', async ()=>{
+  splitMode = !splitMode;
+  document.getElementById('btn-split').classList.toggle('active', splitMode);
+  document.getElementById('panel-b').style.display = splitMode ? 'flex' : 'none';
+  document.getElementById('split-divider').style.display = splitMode ? 'block' : 'none';
+  document.body.classList.toggle('split-mode', splitMode);
+  document.getElementById('panel-a-lbl').textContent = splitMode ? '1H' : (timeframe==='1Hour'?'1H':'1D');
+  document.getElementById('panel-b-lbl').textContent = '1D';
+  // If split mode, ensure 1D data is loaded
+  if (splitMode && connected) {
+    const key = selected+'|1Day';
+    if (!cache[key]) {
+      setOv(true, 'LOADING 1D…');
+      try { await fetchBars(selected, '1Day'); } catch(_) {}
+      setOv(false);
+    }
+    // Also ensure 1H is loaded
+    const keyH = selected+'|1Hour';
+    if (!cache[keyH]) {
+      setOv(true, 'LOADING 1H…');
+      try { await fetchBars(selected, '1Hour'); } catch(_) {}
+      setOv(false);
+    }
+  }
+  setTimeout(renderMain, 50);
+});
+
+// Panel B tooltip
+(()=>{
+  const wrap = document.getElementById('cw2');
+  const tip  = document.getElementById('tip2');
+  if (!wrap || !tip) return;
+  wrap.addEventListener('mousemove', e=>{
+    if (!splitMode) return;
+    const rect=wrap.getBoundingClientRect(), mx=e.clientX-rect.left;
+    const W=wrap.clientWidth, H=wrap.clientHeight;
+    const PAD={top:14,right:14,bottom:32,left:68};
+    const d=cache[selected+'|1Day'];
+    if (!d){tip.style.display='none';return;}
+    const{candles,signals}=d, n=candles.length;
+    const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
+    if(idx<0||idx>=n){tip.style.display='none';return;}
+    const c=candles[idx], s=signals[idx];
+    const chg=idx>0?((c.close-candles[idx-1].close)/candles[idx-1].close*100):0;
+    tip.innerHTML=
+      `<div style="color:#818cf8;font-size:8px;margin-bottom:4px">1D · ${c.time?fmtTime(c.time,'1Day'):''}</div>`+
+      `<div>O <b style="color:#e2e8f0">${c.open.toFixed(2)}</b>  H <b style="color:#26A69A">${c.high.toFixed(2)}</b></div>`+
+      `<div>L <b style="color:#EF5350">${c.low.toFixed(2)}</b>  C <b style="color:#e2e8f0">${c.close.toFixed(2)}</b></div>`+
+      `<div style="color:${chg>=0?'#26A69A':'#EF5350'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>`+
+      `<div style="font-size:9px;color:#64748b;margin-top:4px">EMA S ${s.es.toFixed(2)} | L ${s.el.toFixed(2)}</div>`+
+      `<div style="font-size:9px;color:#CE93D8">VEMA ${s.ev.toFixed(2)}</div>`+
+      `<div style="font-size:9px;margin-top:3px">${s.inBull?'<span style="color:#26A69A">IN BULL</span>':s.inBear?'<span style="color:#EF5350">IN BEAR</span>':'<span style="color:#4b5563">FLAT</span>'}</div>`;
+    const tx=mx+12>W-160?mx-165:mx+12;
+    const ty=e.clientY-rect.top+12>H-160?e.clientY-rect.top-160:e.clientY-rect.top+12;
+    tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
+  });
+  wrap.addEventListener('mouseleave',()=>tip.style.display='none');
+})();
 
 document.getElementById('btn-edit').addEventListener('click',()=>{
   const p=document.getElementById('edit-panel');
