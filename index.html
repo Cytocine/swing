@@ -119,8 +119,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
 .li{display:flex;align-items:center;gap:4px;}
 .ld{width:10px;height:2px;border-radius:1px;}
 
-.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
-#cw{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
+.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:grab;}
+.cw-wrap:active{cursor:grabbing;}
+#cw{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:grab;}
+#cw:active{cursor:grabbing;}
 #cw canvas{display:block;}
 #tip{position:absolute;background:rgba(7,10,15,.97);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;display:none;z-index:20;line-height:1.9;min-width:140px;backdrop-filter:blur(8px);}
 #ov{position:absolute;inset:0;background:rgba(8,11,16,.78);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:15;backdrop-filter:blur(4px);}
@@ -619,7 +621,7 @@ let P = {
   base: 'https://data.alpaca.markets/v2/stocks',
 };
 
-const DEFAULT_TICKERS = 'AAPL\nMSFT\nNVDA\nTSLA\nAMZN\nMETA\nGOOGL\nSPY\nQQQ\nAMD';
+const DEFAULT_TICKERS = 'AA\nAAL\nABBV\nABT\nACB\nACN\nADBE\nADSK\nAFRM\nAGNC\nALHC\nAMD\nAMZN\nAPP\nARM\nASPI\nASTS\nAVDL\nAXON\nB\nBA\nBABA\nBAC\nBAM\nBE\nBMY\nBULL\nC\nCARR\nCAVA\nCC\nCCJ\nCCL\nCELH\nCHWY\nCLMT\nCLOV\nCLSK\nCMG\nCNQ\nCORZ\nCOST\nCOTY\nCPNG\nCRM\nCRML\nCRWD\nCRWV\nCVNA\nCVS\nDAR\nDBX\nDELL\nDJT\nDKNG\nDOW\nEBAY\nENPH\nENR\nEQX\nEXE\nF\nFCX\nFDX\nFSLR\nGILD\nGILT\nGM\nGME\nGOOG\nGOOGL\nHIMS\nHOOD\nHPE\nHPQ\nHUT\nINTC\nIQ\nIREN\nIWM\nJBLU\nJD\nJMIA\nJNJ\nJPM\nKHC\nKMI\nKO\nKSS\nLLY\nLOW\nLULU\nLUV\nLVS\nLYFT\nMARA\nMBLY\nMBOT\nMETA\nMNDY\nMO\nMRK\nMRVL\nMSFT\nMU\nNEE\nNEXT\nNFLX\nNIO\nNKE\nNU\nNVDA\nONDS\nOPEN\nOWL\nOXY\nPBR\nPCG\nPDD\nPEP\nPFE\nPG\nPGEN\nPINS\nPLTR\nPSKY\nQBTS\nQCOM\nQD\nQQQ\nQS\nRELY\nRGTI\nRIOT\nRIVN\nRKT\nROKU\nRTX\nSATS\nSBUX\nSERV\nSLV\nSMCI\nSNAP\nSOFI\nSOUN\nSPY\nT\nTCOM\nTDOC\nTEVA\nTGT\nTIGR\nTMUS\nTNA\nTRMD\nTSLA\nTTD\nU\nUAL\nUBER\nUPS\nUPST\nVALE\nVZ\nWDC\nWMT\nWULF\nXLE\nXLF\nXOM\nXPEV\nZ';
 
 // ═══════════════════════════════════════════
 // STATE
@@ -632,60 +634,87 @@ let sidebarVisible = true;
 let sidebarSort = 'all';   // 'all' | 'long' | 'short' | 'flat'
 let miniFilter  = 'all';   // 'all' | 'long' | 'short'
 // Scanner strip has its own independent ticker list
-let scannerTickers = ['AAPL','MSFT','NVDA','TSLA','AMZN','META','GOOGL','SPY','QQQ','AMD'];
-const cache = {};  // "AAPL|1Hour" -> {candles, signals}
+let scannerTickers = ['AAPL','ACB','AMD','AMZN','BABA','CCJ','IWM','JPM','MARA','META','MSFT','NFLX','NVDA','QQQ','SPY','T','TSLA','XOM'];
+const cache = {};  // "AAPL|1Hour" -> {candles, signals, ts}
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function cacheGet(key) {
+  const e = cache[key];
+  if (!e) return null;
+  if (Date.now() - e.ts > CACHE_TTL) { delete cache[key]; return null; }
+  return e;
+}
+function cacheSet(key, val) {
+  cache[key] = { ...val, ts: Date.now() };
+}
 
 // ═══════════════════════════════════════════
 // ALPACA FETCH
 // ═══════════════════════════════════════════
 async function fetchBars(ticker, tf) {
   const cacheKey = ticker+'|'+tf;
-  if (cache[cacheKey]) return cache[cacheKey];
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
 
-  // Use tomorrow as `end` so we never accidentally cut off today's latest bar.
-  // Alpaca returns bars up to the most recently completed bar regardless.
   const now   = new Date();
   const end   = new Date(now);
-  end.setDate(end.getDate() + 1);          // tomorrow = always includes today
-  end.setUTCHours(0,0,0,0);               // midnight UTC
+  end.setDate(end.getDate() + 1);
+  end.setUTCHours(0,0,0,0);
 
   const start = new Date(now);
-  if (tf === '1Hour') start.setDate(start.getDate() - 90);
-  if (tf === '1Day')  start.setDate(start.getDate() - 400);
-  start.setUTCHours(0,0,0,0);             // snap to midnight so we don't miss pre-market
+  // Go back far enough to get 200 bars AFTER pagination
+  // 1H: markets trade ~390 min/day -> 200 bars ~ 26 trading days -> 60 cal days safe
+  // 1D: 200 bars ~ 10 months -> 320 cal days safe
+  if (tf === '1Hour') start.setDate(start.getDate() - 60);
+  if (tf === '1Day')  start.setDate(start.getDate() - 320);
+  start.setUTCHours(0,0,0,0);
 
-  const qs = new URLSearchParams({
-    timeframe:  tf,
-    start:      start.toISOString().slice(0,19)+'Z',
-    end:        end.toISOString().slice(0,19)+'Z',
-    limit:      1000,
-    sort:       'asc',
-    adjustment: 'raw',
-    feed:       'iex',
-  });
+  // Paginate through ALL pages to get every bar in the window
+  let allBars = [];
+  let pageToken = null;
+  let pageCount = 0;
+  const MAX_PAGES = 20; // safety cap
 
-  const res = await fetch(`${P.base}/${encodeURIComponent(ticker)}/bars?${qs}`, {
-    headers: {
-      'APCA-API-KEY-ID':     apiKey,
-      'APCA-API-SECRET-KEY': apiSecret,
-    },
-  });
+  do {
+    const params = {
+      timeframe:  tf,
+      start:      start.toISOString().slice(0,19)+'Z',
+      end:        end.toISOString().slice(0,19)+'Z',
+      limit:      1000,
+      sort:       'asc',
+      adjustment: 'raw',
+      feed:       'iex',
+    };
+    if (pageToken) params.page_token = pageToken;
 
-  if (!res.ok) {
-    let msg = res.statusText;
-    try { const j=await res.json(); msg=j.message||j.error||msg; } catch(_){}
-    throw new Error(`${ticker}: ${msg}`);
-  }
+    const qs = new URLSearchParams(params);
+    const res = await fetch(`${P.base}/${encodeURIComponent(ticker)}/bars?${qs}`, {
+      headers: {
+        'APCA-API-KEY-ID':     apiKey,
+        'APCA-API-SECRET-KEY': apiSecret,
+      },
+    });
 
-  const json = await res.json();
-  // Slice the last P.bars so chart shows the most recent candles
-  const bars = (json.bars||[]).slice(-P.bars);
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const j=await res.json(); msg=j.message||j.error||msg; } catch(_){}
+      throw new Error(`${ticker}: ${msg}`);
+    }
+
+    const json = await res.json();
+    allBars = allBars.concat(json.bars || []);
+    pageToken = json.next_page_token || null;
+    pageCount++;
+  } while (pageToken && pageCount < MAX_PAGES);
+
+  // Take the last P.bars (most recent) for display & signal calc
+  const bars = allBars.slice(-P.bars);
   if (!bars.length) throw new Error(`${ticker}: no data`);
 
   const candles = bars.map(b=>({open:b.o,high:b.h,low:b.l,close:b.c,vol:b.v,time:b.t}));
   const signals = computeSignals(candles);
-  cache[cacheKey] = {candles, signals};
-  return cache[cacheKey];
+  cacheSet(cacheKey, {candles, signals});
+  return cacheGet(cacheKey);
 }
 
 async function loadAll(clearCache=false) {
@@ -693,7 +722,8 @@ async function loadAll(clearCache=false) {
   const allSymbols = [...new Set([...tickers, ...scannerTickers])];
   // In split mode fetch both 1H and 1D; otherwise just the active TF
   const tfsToLoad = splitMode ? ['1Hour','1Day'] : [timeframe];
-  if (clearCache) allSymbols.forEach(t=>tfsToLoad.forEach(tf=>delete cache[t+'|'+tf]));
+  // Always clear both TFs on reload so stale data never persists
+  if (clearCache) allSymbols.forEach(t=>['1Hour','1Day'].forEach(tf=>delete cache[t+'|'+tf]));
   setOv(true,'FETCHING '+allSymbols.length+' SYMBOLS…');
   document.getElementById('btn-reload').disabled = true;
   await Promise.allSettled(
@@ -1035,6 +1065,27 @@ function drawChart(ctx, candles, signals, W, H, isMain, chartTf) {
 
 let splitMode = false;
 
+// Per-panel view state: offset = bars from right edge, zoom = bars visible
+const viewState = {
+  'cw':  { offset: 0, zoom: 0 },  // zoom=0 means show all P.bars
+  'cw2': { offset: 0, zoom: 0 },
+};
+
+function getView(panelId, totalBars) {
+  const vs = viewState[panelId] || { offset:0, zoom:0 };
+  const maxZoom = Math.min(totalBars, 200);
+  const minZoom = Math.min(totalBars, 10);
+  const zoom   = vs.zoom > 0 ? Math.max(minZoom, Math.min(maxZoom, vs.zoom)) : totalBars;
+  const offset = Math.max(0, Math.min(totalBars - zoom, vs.offset));
+  const start  = totalBars - zoom - offset;
+  const end    = totalBars - offset;
+  return { start: Math.max(0,start), end: Math.min(totalBars,end) };
+}
+
+function resetView(panelId) {
+  viewState[panelId] = { offset:0, zoom:0 };
+}
+
 function renderPanel(wrapId, canvasId, tf) {
   const wrap = document.getElementById(wrapId);
   const cv   = document.getElementById(canvasId);
@@ -1047,14 +1098,18 @@ function renderPanel(wrapId, canvasId, tf) {
   cv.style.width=W+'px'; cv.style.height=H+'px';
   const ctx = cv.getContext('2d');
   ctx.scale(dpr,dpr);
-  const d = cache[selected+'|'+tf];
+  const d = cacheGet(selected+'|'+tf);
   if (!d) {
     ctx.fillStyle='#080b10'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.font='11px "Space Mono"'; ctx.textAlign='center';
     ctx.fillText(connected ? (tf==='1Hour'?'1H':'1D')+' — NO DATA' : 'ENTER CREDENTIALS TO CONNECT', W/2, H/2);
     return;
   }
-  drawChart(ctx, d.candles, d.signals, W, H, true, tf);
+  const total = d.candles.length;
+  const { start, end } = getView(wrapId, total);
+  const candles = d.candles.slice(start, end);
+  const signals = d.signals.slice(start, end);
+  drawChart(ctx, candles, signals, W, H, true, tf);
 }
 
 function renderMain() {
@@ -1067,7 +1122,7 @@ function drawMini(canvas, ticker) {
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
   const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  const d=cache[ticker+'|'+timeframe];
+  const d=cacheGet(ticker+'|'+timeframe);
   if (!d) {
     ctx.fillStyle='#0d1420'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.font='8px monospace'; ctx.textAlign='center';
@@ -1092,7 +1147,7 @@ function fmtTime(iso, tf) {
 function sInfo(ticker) {
   // In split mode the sidebar/status reflects the primary (1H) timeframe
   const tf = splitMode ? '1Hour' : timeframe;
-  const d = cache[ticker+'|'+tf] || cache[ticker+'|'+timeframe];
+  const d = cacheGet(ticker+'|'+tf) || cacheGet(ticker+'|'+timeframe);
   if (!d) return {ok:false,status:'FLAT',sc:'flat',chg:0,price:0,last:null};
   const {candles,signals} = d;
   const last  = signals[signals.length-1];
@@ -1110,7 +1165,7 @@ function ic(t) { let h=0; for(const c of t) h=h*31+c.charCodeAt(0); return IC[Ma
 
 // Returns signal info for the last N candles
 function recentSignal(ticker, lookback=2) {
-  const d = cache[ticker+'|'+timeframe];
+  const d = cacheGet(ticker+'|'+timeframe);
   if (!d) return { hasLong:false, hasShort:false, hasPbLong:false, hasPbShort:false, hasAny:false, tag:null };
   const sigs = d.signals;
   const slice = sigs.slice(-lookback);
@@ -1303,7 +1358,7 @@ function updateHeader() {
   ce.className='chg-'+(chg>=0?'bull':'bear');
   document.getElementById('ch-tf').textContent = splitMode ? '1H | 1D' : (timeframe==='1Hour'?'1H':'1D');
   const activeTf = splitMode ? '1Hour' : timeframe;
-  const d = cache[selected+'|'+activeTf];
+  const d = cacheGet(selected+'|'+activeTf);
   if(d){
     const lt=d.candles[d.candles.length-1].time;
     document.getElementById('ch-upd').textContent='LAST: '+fmtTime(lt,activeTf);
@@ -1334,10 +1389,12 @@ function refresh() { buildSidebar(); buildMini(); updateHeader(); updateSB(); re
 
 async function selectTicker(t) {
   selected = t;
+  // Reset zoom/pan when switching tickers
+  resetView('cw'); resetView('cw2');
   if (connected) {
     const toLoad = splitMode
-      ? ['1Hour','1Day'].filter(tf=>!cache[t+'|'+tf])
-      : (cache[t+'|'+timeframe] ? [] : [timeframe]);
+      ? ['1Hour','1Day'].filter(tf=>!cacheGet(t+'|'+tf))
+      : (cacheGet(t+'|'+timeframe) ? [] : [timeframe]);
     if (toLoad.length) {
       setOv(true,'LOADING '+t+'…');
       await Promise.allSettled(toLoad.map(tf=>fetchBars(t,tf)));
@@ -1357,7 +1414,7 @@ async function selectTicker(t) {
     const W=wrap.clientWidth,H=wrap.clientHeight;
     const PAD={top:14,right:14,bottom:32,left:68};
     const activeTf = splitMode ? '1Hour' : timeframe;
-    const d=cache[selected+'|'+activeTf]; if(!d){tip.style.display='none';return;}
+    const d=cacheGet(selected+'|'+activeTf); if(!d){tip.style.display='none';return;}
     const{candles,signals}=d,n=candles.length;
     const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
     if(idx<0||idx>=n){tip.style.display='none';return;}
@@ -1392,7 +1449,8 @@ document.getElementById('btn-connect').addEventListener('click', async ()=>{
   apiKey=k; apiSecret=s;
   setSt('loading','VERIFYING…');
   document.getElementById('btn-connect').disabled=true;
-  delete cache[tickers[0]+'|'+timeframe];
+  // Clear entire cache on (re)connect so everything re-fetches fresh
+  Object.keys(cache).forEach(k=>delete cache[k]);
   try {
     await fetchBars(tickers[0], timeframe);
     connected=true;
@@ -1421,7 +1479,7 @@ document.getElementById('btn-apply-params').addEventListener('click', ()=>{
   P.crossThr=ct/100; P.retestBuf=rb/100;
   // Recompute signals for all cached candles
   Object.keys(cache).forEach(k=>{
-    if(cache[k]) cache[k].signals = computeSignals(cache[k].candles);
+    if(cache[k] && cache[k].candles) { cache[k].signals = computeSignals(cache[k].candles); cache[k].ts = Date.now(); }
   });
   refresh();
 });
@@ -1458,14 +1516,14 @@ document.getElementById('btn-split').addEventListener('click', async ()=>{
   // If split mode, ensure 1D data is loaded
   if (splitMode && connected) {
     const key = selected+'|1Day';
-    if (!cache[key]) {
+    if (!cacheGet(key)) {
       setOv(true, 'LOADING 1D…');
       try { await fetchBars(selected, '1Day'); } catch(_) {}
       setOv(false);
     }
     // Also ensure 1H is loaded
     const keyH = selected+'|1Hour';
-    if (!cache[keyH]) {
+    if (!cacheGet(keyH)) {
       setOv(true, 'LOADING 1H…');
       try { await fetchBars(selected, '1Hour'); } catch(_) {}
       setOv(false);
@@ -1484,7 +1542,7 @@ document.getElementById('btn-split').addEventListener('click', async ()=>{
     const rect=wrap.getBoundingClientRect(), mx=e.clientX-rect.left;
     const W=wrap.clientWidth, H=wrap.clientHeight;
     const PAD={top:14,right:14,bottom:32,left:68};
-    const d=cache[selected+'|1Day'];
+    const d=cacheGet(selected+'|1Day');
     if (!d){tip.style.display='none';return;}
     const{candles,signals}=d, n=candles.length;
     const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
@@ -1504,6 +1562,65 @@ document.getElementById('btn-split').addEventListener('click', async ()=>{
     tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
   });
   wrap.addEventListener('mouseleave',()=>tip.style.display='none');
+})();
+
+// ═══════════════════════════════════════════
+// ZOOM & PAN — mouse wheel + drag for both panels
+// ═══════════════════════════════════════════
+(()=>{
+  const panels = [
+    { id:'cw',  getTf:()=> splitMode ? '1Hour' : timeframe },
+    { id:'cw2', getTf:()=> '1Day' },
+  ];
+
+  panels.forEach(({ id, getTf }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Wheel → zoom (scroll in = fewer bars, scroll out = more bars)
+    el.addEventListener('wheel', e => {
+      e.preventDefault();
+      const d = cacheGet(selected+'|'+getTf());
+      if (!d) return;
+      const total = d.candles.length;
+      const vs = viewState[id];
+      const currentZoom = vs.zoom > 0 ? vs.zoom : total;
+      const factor = e.deltaY > 0 ? 1.15 : 0.87;
+      const newZoom = Math.round(Math.max(10, Math.min(total, currentZoom * factor)));
+      viewState[id].zoom = newZoom;
+      viewState[id].offset = Math.max(0, Math.min(total - newZoom, vs.offset));
+      renderMain();
+    }, { passive: false });
+
+    // Drag → pan left/right
+    let dragStart = null;
+    let dragOffset = 0;
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      dragStart = e.clientX;
+      dragOffset = viewState[id].offset;
+      el.style.cursor = 'grabbing';
+    });
+    window.addEventListener('mousemove', e => {
+      if (dragStart === null) return;
+      const d = cacheGet(selected+'|'+getTf());
+      if (!d) return;
+      const total = d.candles.length;
+      const vs    = viewState[id];
+      const zoom  = vs.zoom > 0 ? vs.zoom : total;
+      const W     = el.clientWidth - 82; // PAD.left+right
+      const pxPerBar = Math.max(1, W / zoom);
+      const deltaBars = Math.round((dragStart - e.clientX) / pxPerBar);
+      viewState[id].offset = Math.max(0, Math.min(total - zoom, dragOffset + deltaBars));
+      renderMain();
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragStart !== null) { dragStart = null; el.style.cursor = ''; }
+    });
+
+    // Double-click → reset to show all bars
+    el.addEventListener('dblclick', () => { resetView(id); renderMain(); });
+  });
 })();
 
 document.getElementById('btn-edit').addEventListener('click',()=>{
@@ -1577,7 +1694,7 @@ document.getElementById('btn-sc-apply').addEventListener('click',async()=>{
   buildMini();
   if(connected){
     // Fetch only new symbols not already cached
-    const toFetch=scannerTickers.filter(t=>!cache[t+'|'+timeframe]);
+    const toFetch=scannerTickers.filter(t=>!cacheGet(t+'|'+timeframe));
     if(toFetch.length){
       setOv(true,'FETCHING '+toFetch.length+' SCANNER SYMBOLS…');
       await Promise.allSettled(toFetch.map(t=>fetchBars(t,timeframe)));
@@ -1613,7 +1730,8 @@ async function fetchAllSymbols() {
 
 async function fetchBarsForScan(ticker, tf) {
   const cacheKey = ticker+'|'+tf;
-  if(cache[cacheKey]) return cache[cacheKey];
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
   const now=new Date();
   const end=new Date(now); end.setDate(end.getDate()+1); end.setUTCHours(0,0,0,0);
   const start=new Date(now);
@@ -1630,8 +1748,8 @@ async function fetchBarsForScan(ticker, tf) {
   if(!bars.length) throw new Error(ticker+':no bars');
   const candles=bars.map(b=>({open:b.o,high:b.h,low:b.l,close:b.c,vol:b.v,time:b.t}));
   const signals=computeSignals(candles);
-  cache[cacheKey]={candles,signals};
-  return cache[cacheKey];
+  cacheSet(cacheKey,{candles,signals});
+  return cacheGet(cacheKey);
 }
 
 async function runScan() {
@@ -1913,7 +2031,7 @@ function selectSavedList(name){
     grid.appendChild(card);
     // Draw mini chart if cached
     requestAnimationFrame(()=>{
-      const d = cache[r.ticker+'|'+timeframe];
+      const d = cacheGet(r.ticker+'|'+timeframe);
       if(d){
         const dpr=window.devicePixelRatio||1, W=200, H=70;
         cv.width=W*dpr; cv.height=H*dpr;
