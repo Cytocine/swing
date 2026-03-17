@@ -119,10 +119,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
 .li{display:flex;align-items:center;gap:4px;}
 .ld{width:10px;height:2px;border-radius:1px;}
 
-.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:grab;}
+.cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:crosshair;}
 .cw-wrap:active{cursor:grabbing;}
-#cw{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:grab;}
+#cw{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;cursor:crosshair;}
 #cw:active{cursor:grabbing;}
+.xhair-canvas{position:absolute;inset:0;pointer-events:none;}
 #cw canvas{display:block;}
 #tip{position:absolute;background:rgba(7,10,15,.97);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;display:none;z-index:20;line-height:1.9;min-width:140px;backdrop-filter:blur(8px);}
 #ov{position:absolute;inset:0;background:rgba(8,11,16,.78);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:15;backdrop-filter:blur(4px);}
@@ -294,7 +295,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--fm);display:flex;f
 #btn-topbar-scan{background:linear-gradient(135deg,rgba(38,166,154,0.12),rgba(99,102,241,0.12));border:1px solid rgba(38,166,154,0.3);border-radius:6px;color:#26A69A;font-family:var(--fm);font-size:9px;font-weight:700;padding:5px 12px;cursor:pointer;letter-spacing:.8px;transition:all .15s;}
 #btn-topbar-scan:hover{background:linear-gradient(135deg,rgba(38,166,154,0.25),rgba(99,102,241,0.25));}
 #btn-topbar-scan:disabled{opacity:.4;cursor:not-allowed;}
-/* ── SPLIT VIEW ── */
+/* ── DRAWING TOOLBAR ── */
+#draw-toolbar{display:flex;align-items:center;gap:5px;padding:5px 14px;background:#070a0f;border-top:1px solid rgba(255,255,255,0.05);flex-shrink:0;flex-wrap:wrap;}
+.dt-lbl{font-size:7px;color:#374151;letter-spacing:1.5px;font-weight:700;margin-right:2px;}
+.dt-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:#64748b;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;padding:4px 10px;cursor:pointer;letter-spacing:.5px;transition:all .12s;white-space:nowrap;}
+.dt-btn:hover{background:rgba(255,255,255,0.09);color:#e2e8f0;}
+.dt-btn.active{background:rgba(38,166,154,0.18);border-color:rgba(38,166,154,0.5);color:#26A69A;}
+.dt-sep{width:1px;height:18px;background:rgba(255,255,255,0.07);margin:0 4px;flex-shrink:0;}
+#dt-colors{display:flex;gap:5px;align-items:center;}
+.dt-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s;flex-shrink:0;}
+.dt-color:hover{transform:scale(1.2);}
+.dt-color.active{border-color:#fff;box-shadow:0 0 5px rgba(255,255,255,0.4);}
+/* drawing canvas sits above chart, below crosshair */
+.draw-canvas{position:absolute;inset:0;pointer-events:none;}
+body.drawing-mode .cw-wrap{cursor:crosshair!important;}
+body.drawing-mode .cw-wrap:active{cursor:crosshair!important;}
+/* text input popup */
+#draw-text-popup{position:fixed;z-index:200;background:#0d1219;border:1px solid rgba(38,166,154,0.4);border-radius:8px;padding:10px 12px;display:none;gap:8px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,0.6);}
+#draw-text-popup input{background:#080b10;border:1px solid rgba(255,255,255,0.12);border-radius:5px;color:#e2e8f0;font-family:'Space Mono',monospace;font-size:11px;padding:5px 9px;width:180px;outline:none;}
+#draw-text-popup input:focus{border-color:rgba(38,166,154,.45);}
+#draw-text-popup button{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;padding:5px 10px;border-radius:5px;cursor:pointer;border:1px solid;}
+#btn-text-ok{background:rgba(38,166,154,0.2);border-color:rgba(38,166,154,.5);color:#26A69A;}
+#btn-text-cancel{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:#64748b;}
 #charts-row{flex:1;display:flex;gap:0;overflow:hidden;min-height:0;}
 .chart-panel{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;}
 .cw-wrap{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;min-height:0;}
@@ -413,11 +435,13 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
 
     <!-- Chart area: single or split -->
     <div id="charts-row">
-      <!-- Panel A: always shown (single = full width, split = left half) -->
+      <!-- Panel A -->
       <div class="chart-panel" id="panel-a">
         <div class="panel-label" id="panel-a-lbl">1H</div>
         <div class="cw-wrap" id="cw">
           <canvas id="cv"></canvas>
+          <canvas id="draw-a" class="xhair-canvas" style="z-index:5"></canvas>
+          <canvas id="xhair-a" class="xhair-canvas" style="z-index:10"></canvas>
           <div id="tip"></div>
           <div id="ov" class="show">
             <div class="sp"></div>
@@ -425,16 +449,43 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
           </div>
         </div>
       </div>
-      <!-- Divider (only visible in split mode) -->
       <div id="split-divider"></div>
-      <!-- Panel B: only shown in split mode (right half = 1D) -->
+      <!-- Panel B -->
       <div class="chart-panel" id="panel-b" style="display:none">
         <div class="panel-label" id="panel-b-lbl">1D</div>
         <div class="cw-wrap" id="cw2">
           <canvas id="cv2"></canvas>
+          <canvas id="draw-b" class="xhair-canvas" style="z-index:5"></canvas>
+          <canvas id="xhair-b" class="xhair-canvas" style="z-index:10"></canvas>
           <div id="tip2"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Drawing Toolbar -->
+    <div id="draw-toolbar">
+      <span class="dt-lbl">DRAW</span>
+      <button class="dt-btn active" data-tool="none" title="Cursor / Select">↖ CURSOR</button>
+      <button class="dt-btn" data-tool="trendline" title="Trend Line">╱ TREND</button>
+      <button class="dt-btn" data-tool="hline" title="Horizontal Line">— HLINE</button>
+      <button class="dt-btn" data-tool="ray" title="Ray (one-direction line)">→ RAY</button>
+      <button class="dt-btn" data-tool="rect" title="Rectangle / Box">▭ RECT</button>
+      <button class="dt-btn" data-tool="text" title="Text Label">T TEXT</button>
+      <div class="dt-sep"></div>
+      <span class="dt-lbl">COLOR</span>
+      <div id="dt-colors">
+        <div class="dt-color active" data-c="#26A69A" style="background:#26A69A" title="Teal"></div>
+        <div class="dt-color" data-c="#EF5350" style="background:#EF5350" title="Red"></div>
+        <div class="dt-color" data-c="#fbbf24" style="background:#fbbf24" title="Yellow"></div>
+        <div class="dt-color" data-c="#818cf8" style="background:#818cf8" title="Purple"></div>
+        <div class="dt-color" data-c="#ffffff" style="background:#ffffff" title="White"></div>
+        <div class="dt-color" data-c="#f97316" style="background:#f97316" title="Orange"></div>
+      </div>
+      <div class="dt-sep"></div>
+      <button class="dt-btn" id="btn-undo-draw" title="Undo last drawing">↩ UNDO</button>
+      <button class="dt-btn" id="btn-clear-draw" title="Clear all drawings on current chart">🗑 CLEAR</button>
+      <div class="dt-sep"></div>
+      <span id="dt-saved-indicator" style="font-size:8px;color:#4b5563;letter-spacing:1px"></span>
     </div>
     <div id="mini-wrap">
       <div id="mini-hdr">
@@ -595,6 +646,13 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
     </div>
 
   </div>
+</div>
+
+<!-- Drawing text input popup -->
+<div id="draw-text-popup">
+  <input id="draw-text-input" type="text" placeholder="Label text…" maxlength="80"/>
+  <button id="btn-text-ok">OK</button>
+  <button id="btn-text-cancel">✕</button>
 </div>
 
 <!-- STATUSBAR -->
@@ -867,6 +925,7 @@ function computeSignals(candles) {
 
 function drawChart(ctx, candles, signals, W, H, isMain, chartTf) {
   const tf = chartTf || timeframe;
+  const RIGHT_GAP = isMain ? 10 : 2;  // empty bar slots on right
   const PAD = {top:14, right:14, bottom: isMain?32:4, left: isMain?68:4};
   const cW = W-PAD.left-PAD.right;
   const cH = H-PAD.top-PAD.bottom;
@@ -877,7 +936,9 @@ function drawChart(ctx, candles, signals, W, H, isMain, chartTf) {
   const n = candles.length;
   if (!n) return;
 
-  const cw = cW/n;
+  // Allocate width for n + RIGHT_GAP slots so the last candle has breathing room
+  const totalSlots = n + RIGHT_GAP;
+  const cw = cW / totalSlots;
   const bw = Math.max(1, cw*0.6);
 
   const ess = signals.map(s=>s.es);
@@ -1115,6 +1176,13 @@ function renderPanel(wrapId, canvasId, tf) {
 function renderMain() {
   renderPanel('cw', 'cv', splitMode ? '1Hour' : timeframe);
   if (splitMode) renderPanel('cw2', 'cv2', '1Day');
+  // Draw saved drawings on top (renderDrawings is defined later but called via event loop)
+  requestAnimationFrame(() => {
+    if (typeof renderDrawings === 'function') {
+      renderDrawings('cw');
+      if (splitMode) renderDrawings('cw2');
+    }
+  });
 }
 
 function drawMini(canvas, ticker) {
@@ -1389,7 +1457,6 @@ function refresh() { buildSidebar(); buildMini(); updateHeader(); updateSB(); re
 
 async function selectTicker(t) {
   selected = t;
-  // Reset zoom/pan when switching tickers
   resetView('cw'); resetView('cw2');
   if (connected) {
     const toLoad = splitMode
@@ -1402,41 +1469,212 @@ async function selectTicker(t) {
     }
   }
   refresh();
+  // Load drawings for the new ticker
+  if (typeof loadAllDrawings === 'function') loadAllDrawings();
 }
 
 // ═══════════════════════════════════════════
-// TOOLTIP
+// CROSSHAIR + TOOLTIP
 // ═══════════════════════════════════════════
+const PAD_MAIN = {top:14, right:14, bottom:32, left:68};
+
+function drawCrosshair(xhairCanvas, mx, my, candles, signals, W, H, tf, color) {
+  const dpr = window.devicePixelRatio||1;
+  xhairCanvas.width  = W*dpr; xhairCanvas.height = H*dpr;
+  xhairCanvas.style.width  = W+'px'; xhairCanvas.style.height = H+'px';
+  const ctx = xhairCanvas.getContext('2d');
+  ctx.clearRect(0,0,W*dpr,H*dpr);
+  ctx.scale(dpr,dpr);
+
+  const n    = candles.length;
+  const PAD  = PAD_MAIN;
+  const cW   = W - PAD.left - PAD.right;
+  const cH   = H - PAD.top  - PAD.bottom;
+  const totalSlots = n + 10;
+  const cw   = cW / totalSlots;
+
+  // Price range (same as drawChart)
+  const ess = signals.map(s=>s.es);
+  const els = signals.map(s=>s.el);
+  const evs = signals.map(s=>s.ev);
+  const maxP = Math.max(...candles.map(c=>c.high),...ess,...els,...evs);
+  const minP = Math.min(...candles.map(c=>c.low), ...ess,...els,...evs);
+  const rng  = maxP - minP || 1;
+  const Y = v => PAD.top + cH - ((v-minP)/rng)*cH;
+  const X = i => PAD.left + i*cw + cw/2;
+
+  // Snap x to nearest bar centre
+  const idx = Math.max(0, Math.min(n-1, Math.floor((mx - PAD.left) / cw)));
+  const snapX = X(idx);
+  const c = candles[idx];
+  const priceAtY = maxP - ((my - PAD.top) / cH) * rng;
+
+  // Clamp inside chart area
+  if (mx < PAD.left || mx > PAD.left+cW || my < PAD.top || my > PAD.top+cH) {
+    return { idx: -1 };
+  }
+
+  ctx.save();
+  ctx.setLineDash([4,4]);
+  ctx.lineWidth = 1;
+
+  // Vertical line (snapped to bar)
+  ctx.strokeStyle = color || 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.moveTo(snapX, PAD.top); ctx.lineTo(snapX, PAD.top+cH); ctx.stroke();
+
+  // Horizontal line (at mouse y)
+  ctx.strokeStyle = color || 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(PAD.left, my); ctx.lineTo(PAD.left+cW, my); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Price label on right axis
+  const labelH = 16, labelW = 62;
+  const labelY = Math.max(PAD.top, Math.min(PAD.top+cH-labelH, my - labelH/2));
+  ctx.fillStyle = color || 'rgba(38,166,154,0.9)';
+  ctx.beginPath();
+  ctx.roundRect(PAD.left+cW+2, labelY, labelW, labelH, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px "Space Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(priceAtY.toFixed(2), PAD.left+cW+2+labelW/2, labelY+11);
+
+  // Time label on bottom axis
+  if (c && c.time) {
+    const timeLabel = fmtTime(c.time, tf);
+    ctx.font = '8px "Space Mono",monospace';
+    const tw = ctx.measureText(timeLabel).width + 14;
+    const tlx = Math.max(PAD.left, Math.min(PAD.left+cW-tw, snapX - tw/2));
+    ctx.fillStyle = color || 'rgba(38,166,154,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(tlx, PAD.top+cH+2, tw, 14, 3);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText(timeLabel, tlx+tw/2, PAD.top+cH+12);
+  }
+
+  // Dot on close price
+  if (c) {
+    const closeY = Y(c.close);
+    ctx.fillStyle = color || '#26A69A';
+    ctx.beginPath(); ctx.arc(snapX, closeY, 3, 0, Math.PI*2); ctx.fill();
+  }
+
+  ctx.restore();
+  return { idx };
+}
+
+function clearCrosshair(xhairId) {
+  const cv = document.getElementById(xhairId);
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+}
+
+// ── Panel A crosshair + tooltip ──
 (()=>{
-  const wrap=document.getElementById('cw'),tip=document.getElementById('tip');
-  wrap.addEventListener('mousemove',e=>{
-    const rect=wrap.getBoundingClientRect(),mx=e.clientX-rect.left;
-    const W=wrap.clientWidth,H=wrap.clientHeight;
-    const PAD={top:14,right:14,bottom:32,left:68};
+  const wrap = document.getElementById('cw');
+  const tip  = document.getElementById('tip');
+  const xhairId = 'xhair-a';
+
+  wrap.addEventListener('mousemove', e=>{
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const W  = wrap.clientWidth, H = wrap.clientHeight;
     const activeTf = splitMode ? '1Hour' : timeframe;
-    const d=cacheGet(selected+'|'+activeTf); if(!d){tip.style.display='none';return;}
-    const{candles,signals}=d,n=candles.length;
-    const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
-    if(idx<0||idx>=n){tip.style.display='none';return;}
-    const c=candles[idx],s=signals[idx];
-    const sig=s.signalLong?'▲ LONG':s.signalShort?'▼ SHORT':s.exitLong?'✕ EXIT L':s.exitShort?'✕ EXIT S':s.pbLong?'△ PB L':s.pbShort?'▽ PB S':'';
-    const chg=idx>0?((c.close-candles[idx-1].close)/candles[idx-1].close*100):0;
-    const cloudSide = s.es>=s.el ? '<span style="color:#26A69A">▲ BULL</span>' : '<span style="color:#EF5350">▼ BEAR</span>';
-    tip.innerHTML=
-      `<div style="color:#64748b;font-size:8px;margin-bottom:5px">${selected} · ${activeTf==='1Hour'?'1H':'1D'} · ${c.time?fmtTime(c.time,activeTf):'BAR '+(idx-n)}</div>`+
+    const d  = cacheGet(selected+'|'+activeTf);
+    if (!d) { tip.style.display='none'; clearCrosshair(xhairId); return; }
+
+    const total  = d.candles.length;
+    const { start, end } = getView('cw', total);
+    const candles = d.candles.slice(start, end);
+    const signals = d.signals.slice(start, end);
+    if (!candles.length) return;
+
+    const result = drawCrosshair(
+      document.getElementById(xhairId), mx, my, candles, signals, W, H, activeTf, '#26A69A'
+    );
+    const idx = result.idx;
+    if (idx < 0) { tip.style.display='none'; return; }
+
+    const c = candles[idx], s = signals[idx];
+    const chg = idx>0 ? ((c.close-candles[idx-1].close)/candles[idx-1].close*100) : 0;
+    const cloudSide = s.es>=s.el
+      ? '<span style="color:#26A69A">▲ BULL</span>'
+      : '<span style="color:#EF5350">▼ BEAR</span>';
+    const sig = s.signalLong?'▲ LONG':s.signalShort?'▼ SHORT':s.exitLong?'✕ EXIT L':s.exitShort?'✕ EXIT S':s.pbLong?'△ PB L':s.pbShort?'▽ PB S':'';
+
+    tip.innerHTML =
+      `<div style="color:#64748b;font-size:8px;margin-bottom:5px">${selected} · ${activeTf==='1Hour'?'1H':'1D'} · ${c.time?fmtTime(c.time,activeTf):''}</div>`+
       `<div>O <b style="color:#e2e8f0">${c.open.toFixed(2)}</b>  H <b style="color:#26A69A">${c.high.toFixed(2)}</b></div>`+
       `<div>L <b style="color:#EF5350">${c.low.toFixed(2)}</b>  C <b style="color:#e2e8f0">${c.close.toFixed(2)}</b></div>`+
       `<div style="color:${chg>=0?'#26A69A':'#EF5350'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%  ${(c.vol/1e6).toFixed(2)}M</div>`+
-      `<div style="margin-top:5px;font-size:9px;color:#64748b">EMA Short ${s.es.toFixed(2)}</div>`+
-      `<div style="font-size:9px;color:#64748b">EMA Long  ${s.el.toFixed(2)}</div>`+
-      `<div style="font-size:9px;color:#CE93D8">VEMA      ${s.ev.toFixed(2)}</div>`+
-      `<div style="font-size:9px;margin-top:3px">Cloud: ${cloudSide}  State: ${s.inBull?'<span style="color:#26A69A">IN BULL</span>':s.inBear?'<span style="color:#EF5350">IN BEAR</span>':'<span style="color:#4b5563">FLAT</span>'}</div>`+
+      `<div style="margin-top:5px;font-size:9px;color:#64748b">EMA S ${s.es.toFixed(2)}  L ${s.el.toFixed(2)}</div>`+
+      `<div style="font-size:9px;color:#CE93D8">VEMA ${s.ev.toFixed(2)}</div>`+
+      `<div style="font-size:9px;margin-top:3px">Cloud: ${cloudSide}  ${s.inBull?'<span style="color:#26A69A">IN BULL</span>':s.inBear?'<span style="color:#EF5350">IN BEAR</span>':'<span style="color:#4b5563">FLAT</span>'}</div>`+
       (sig?`<div style="margin-top:5px;font-weight:700;color:${sig.includes('L')?'#00FF99':'#FF5555'}">${sig}</div>`:'');
-    const tx=mx+12>W-160?mx-165:mx+12;
-    const ty=e.clientY-rect.top+12>H-160?e.clientY-rect.top-160:e.clientY-rect.top+12;
+
+    const tx = mx+12 > W-160 ? mx-165 : mx+12;
+    const ty = my+12 > H-160 ? my-160 : my+12;
     tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
   });
-  wrap.addEventListener('mouseleave',()=>tip.style.display='none');
+
+  wrap.addEventListener('mouseleave', ()=>{
+    tip.style.display='none';
+    clearCrosshair(xhairId);
+  });
+})();
+
+// ── Panel B crosshair + tooltip ──
+(()=>{
+  const wrap = document.getElementById('cw2');
+  const tip  = document.getElementById('tip2');
+  const xhairId = 'xhair-b';
+  if (!wrap || !tip) return;
+
+  wrap.addEventListener('mousemove', e=>{
+    if (!splitMode) return;
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const W  = wrap.clientWidth, H = wrap.clientHeight;
+    const d  = cacheGet(selected+'|1Day');
+    if (!d) { tip.style.display='none'; clearCrosshair(xhairId); return; }
+
+    const total   = d.candles.length;
+    const { start, end } = getView('cw2', total);
+    const candles = d.candles.slice(start, end);
+    const signals = d.signals.slice(start, end);
+    if (!candles.length) return;
+
+    const result = drawCrosshair(
+      document.getElementById(xhairId), mx, my, candles, signals, W, H, '1Day', '#818cf8'
+    );
+    const idx = result.idx;
+    if (idx < 0) { tip.style.display='none'; return; }
+
+    const c = candles[idx], s = signals[idx];
+    const chg = idx>0 ? ((c.close-candles[idx-1].close)/candles[idx-1].close*100) : 0;
+    tip.innerHTML =
+      `<div style="color:#818cf8;font-size:8px;margin-bottom:4px">1D · ${c.time?fmtTime(c.time,'1Day'):''}</div>`+
+      `<div>O <b style="color:#e2e8f0">${c.open.toFixed(2)}</b>  H <b style="color:#26A69A">${c.high.toFixed(2)}</b></div>`+
+      `<div>L <b style="color:#EF5350">${c.low.toFixed(2)}</b>  C <b style="color:#e2e8f0">${c.close.toFixed(2)}</b></div>`+
+      `<div style="color:${chg>=0?'#26A69A':'#EF5350'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>`+
+      `<div style="font-size:9px;color:#64748b;margin-top:4px">EMA S ${s.es.toFixed(2)}  L ${s.el.toFixed(2)}</div>`+
+      `<div style="font-size:9px;color:#CE93D8">VEMA ${s.ev.toFixed(2)}</div>`+
+      `<div style="font-size:9px;margin-top:3px">${s.inBull?'<span style="color:#26A69A">IN BULL</span>':s.inBear?'<span style="color:#EF5350">IN BEAR</span>':'<span style="color:#4b5563">FLAT</span>'}</div>`;
+
+    const tx = mx+12 > W-160 ? mx-165 : mx+12;
+    const ty = my+12 > H-160 ? my-160 : my+12;
+    tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
+  });
+
+  wrap.addEventListener('mouseleave', ()=>{
+    tip.style.display='none';
+    clearCrosshair(xhairId);
+  });
 })();
 
 // ═══════════════════════════════════════════
@@ -1532,37 +1770,6 @@ document.getElementById('btn-split').addEventListener('click', async ()=>{
   setTimeout(renderMain, 50);
 });
 
-// Panel B tooltip
-(()=>{
-  const wrap = document.getElementById('cw2');
-  const tip  = document.getElementById('tip2');
-  if (!wrap || !tip) return;
-  wrap.addEventListener('mousemove', e=>{
-    if (!splitMode) return;
-    const rect=wrap.getBoundingClientRect(), mx=e.clientX-rect.left;
-    const W=wrap.clientWidth, H=wrap.clientHeight;
-    const PAD={top:14,right:14,bottom:32,left:68};
-    const d=cacheGet(selected+'|1Day');
-    if (!d){tip.style.display='none';return;}
-    const{candles,signals}=d, n=candles.length;
-    const idx=Math.floor((mx-PAD.left)/((W-PAD.left-PAD.right)/n));
-    if(idx<0||idx>=n){tip.style.display='none';return;}
-    const c=candles[idx], s=signals[idx];
-    const chg=idx>0?((c.close-candles[idx-1].close)/candles[idx-1].close*100):0;
-    tip.innerHTML=
-      `<div style="color:#818cf8;font-size:8px;margin-bottom:4px">1D · ${c.time?fmtTime(c.time,'1Day'):''}</div>`+
-      `<div>O <b style="color:#e2e8f0">${c.open.toFixed(2)}</b>  H <b style="color:#26A69A">${c.high.toFixed(2)}</b></div>`+
-      `<div>L <b style="color:#EF5350">${c.low.toFixed(2)}</b>  C <b style="color:#e2e8f0">${c.close.toFixed(2)}</b></div>`+
-      `<div style="color:${chg>=0?'#26A69A':'#EF5350'};margin-top:2px">${chg>=0?'+':''}${chg.toFixed(2)}%</div>`+
-      `<div style="font-size:9px;color:#64748b;margin-top:4px">EMA S ${s.es.toFixed(2)} | L ${s.el.toFixed(2)}</div>`+
-      `<div style="font-size:9px;color:#CE93D8">VEMA ${s.ev.toFixed(2)}</div>`+
-      `<div style="font-size:9px;margin-top:3px">${s.inBull?'<span style="color:#26A69A">IN BULL</span>':s.inBear?'<span style="color:#EF5350">IN BEAR</span>':'<span style="color:#4b5563">FLAT</span>'}</div>`;
-    const tx=mx+12>W-160?mx-165:mx+12;
-    const ty=e.clientY-rect.top+12>H-160?e.clientY-rect.top-160:e.clientY-rect.top+12;
-    tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
-  });
-  wrap.addEventListener('mouseleave',()=>tip.style.display='none');
-})();
 
 // ═══════════════════════════════════════════
 // ZOOM & PAN — mouse wheel + drag for both panels
@@ -1618,10 +1825,245 @@ document.getElementById('btn-split').addEventListener('click', async ()=>{
       if (dragStart !== null) { dragStart = null; el.style.cursor = ''; }
     });
 
-    // Double-click → reset to show all bars
-    el.addEventListener('dblclick', () => { resetView(id); renderMain(); });
+    // Double-click → reset to show all bars (only when not drawing)
+    el.addEventListener('dblclick', () => {
+      if (drawTool === 'none') { resetView(id); renderMain(); }
+    });
   });
 })();
+
+// ═══════════════════════════════════════════
+// DRAWING ENGINE
+// ═══════════════════════════════════════════
+let drawTool   = 'none';
+let drawColor  = '#26A69A';
+let drawActive = null;
+let drawHover  = null;
+const drawings = { 'cw': new Map(), 'cw2': new Map() };
+
+function drawKey(ticker, tf) { return 'fcc_drawings_'+ticker+'_'+tf; }
+
+function saveDrawings(panelId) {
+  const tf = panelId==='cw' ? (splitMode?'1Hour':timeframe) : '1Day';
+  try {
+    localStorage.setItem(drawKey(selected,tf), JSON.stringify([...drawings[panelId].values()]));
+    const ind = document.getElementById('dt-saved-indicator');
+    if(ind){ ind.textContent='✓ SAVED'; setTimeout(()=>ind.textContent='',1500); }
+  } catch(_){}
+}
+
+function loadDrawings(panelId) {
+  const tf = panelId==='cw' ? (splitMode?'1Hour':timeframe) : '1Day';
+  drawings[panelId].clear();
+  try {
+    const raw = localStorage.getItem(drawKey(selected,tf));
+    if(raw) JSON.parse(raw).forEach(d=>drawings[panelId].set(d.id,d));
+  } catch(_){}
+}
+
+function loadAllDrawings() { loadDrawings('cw'); if(splitMode) loadDrawings('cw2'); }
+
+function barToPixel(barIdx, price, candles, signals, W, H) {
+  const n=candles.length, PAD=PAD_MAIN;
+  const cW=W-PAD.left-PAD.right, cH=H-PAD.top-PAD.bottom;
+  const cw=cW/(n+10);
+  const ess=signals.map(s=>s.es),els=signals.map(s=>s.el),evs=signals.map(s=>s.ev);
+  const maxP=Math.max(...candles.map(c=>c.high),...ess,...els,...evs);
+  const minP=Math.min(...candles.map(c=>c.low), ...ess,...els,...evs);
+  const rng=maxP-minP||1;
+  return { px: PAD.left+barIdx*cw+cw/2, py: PAD.top+cH-((price-minP)/rng)*cH };
+}
+
+function pixelToBar(mx, my, candles, signals, W, H) {
+  const n=candles.length, PAD=PAD_MAIN;
+  const cW=W-PAD.left-PAD.right, cH=H-PAD.top-PAD.bottom;
+  const cw=cW/(n+10);
+  const ess=signals.map(s=>s.es),els=signals.map(s=>s.el),evs=signals.map(s=>s.ev);
+  const maxP=Math.max(...candles.map(c=>c.high),...ess,...els,...evs);
+  const minP=Math.min(...candles.map(c=>c.low), ...ess,...els,...evs);
+  const rng=maxP-minP||1;
+  const barIdx=Math.max(0,Math.min(n-1,Math.floor((mx-PAD.left)/cw)));
+  const price=maxP-((my-PAD.top)/cH)*rng;
+  return { barIdx, price };
+}
+
+function renderDrawings(panelId) {
+  const cv=document.getElementById(panelId==='cw'?'draw-a':'draw-b');
+  const wrap=document.getElementById(panelId);
+  if(!cv||!wrap) return;
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,W*dpr,H*dpr); ctx.scale(dpr,dpr);
+  const tf=panelId==='cw'?(splitMode?'1Hour':timeframe):'1Day';
+  const d=cacheGet(selected+'|'+tf); if(!d) return;
+  const total=d.candles.length;
+  const {start,end}=getView(panelId,total);
+  const candles=d.candles.slice(start,end), signals=d.signals.slice(start,end);
+  if(!candles.length) return;
+  drawings[panelId].forEach(dr=>drawOne(ctx,dr,candles,signals,W,H,false,start));
+  if(drawActive&&drawActive.panelId===panelId&&drawActive.p1&&drawHover)
+    drawOne(ctx,{...drawActive,p2:drawHover},candles,signals,W,H,true,start);
+}
+
+function drawOne(ctx, dr, candles, signals, W, H, isPreview, viewStart) {
+  const n=candles.length;
+  const toV=idx=>idx-viewStart;
+  ctx.save();
+  ctx.strokeStyle=dr.color||'#26A69A'; ctx.fillStyle=dr.color||'#26A69A';
+  ctx.lineWidth=isPreview?1.5:2;
+  if(isPreview) ctx.setLineDash([5,4]);
+  ctx.globalAlpha=isPreview?0.65:0.9;
+  const p1v=toV(dr.p1.barIdx), p2v=dr.p2?toV(dr.p2.barIdx):null;
+  const gxy=(vi,pr)=>barToPixel(Math.max(0,Math.min(n-1,vi)),pr,candles,signals,W,H);
+
+  if(dr.type==='trendline'||dr.type==='ray') {
+    if(dr.p2==null){ctx.restore();return;}
+    const a=gxy(p1v,dr.p1.price), b=gxy(p2v,dr.p2.price);
+    if(dr.type==='ray'){
+      const dx=b.px-a.px, dy=b.py-a.py, len=Math.sqrt(dx*dx+dy*dy)||1;
+      ctx.beginPath(); ctx.moveTo(a.px,a.py); ctx.lineTo(b.px+(dx/len)*W,b.py+(dy/len)*W); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(a.px,a.py); ctx.lineTo(b.px,b.py); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.beginPath(); ctx.arc(a.px,a.py,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(b.px,b.py,3,0,Math.PI*2); ctx.fill();
+  } else if(dr.type==='hline') {
+    const PAD=PAD_MAIN, cW=W-PAD.left-PAD.right;
+    const a=gxy(0,dr.p1.price);
+    ctx.beginPath(); ctx.moveTo(PAD.left,a.py); ctx.lineTo(PAD.left+cW,a.py); ctx.stroke();
+    ctx.setLineDash([]); ctx.font='bold 8px "Space Mono",monospace'; ctx.textAlign='right';
+    ctx.globalAlpha=1; ctx.fillText(dr.p1.price.toFixed(2),PAD.left-2,a.py-3);
+  } else if(dr.type==='rect') {
+    if(dr.p2==null){ctx.restore();return;}
+    const a=gxy(p1v,dr.p1.price), b=gxy(p2v,dr.p2.price);
+    const rx=Math.min(a.px,b.px), ry=Math.min(a.py,b.py), rw=Math.abs(b.px-a.px), rh=Math.abs(b.py-a.py);
+    ctx.fillStyle=dr.color+'22'; ctx.beginPath(); ctx.roundRect(rx,ry,rw,rh,2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(rx,ry,rw,rh,2); ctx.stroke();
+  } else if(dr.type==='text') {
+    const a=gxy(p1v,dr.p1.price);
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.font='bold 11px "Space Mono",monospace'; ctx.textAlign='left';
+    const txt=dr.text||'Label', tw=ctx.measureText(txt).width+10;
+    ctx.fillStyle=dr.color+'33'; ctx.beginPath(); ctx.roundRect(a.px-2,a.py-13,tw,17,3); ctx.fill();
+    ctx.fillStyle=dr.color; ctx.fillText(txt,a.px+3,a.py);
+  }
+  ctx.restore();
+}
+
+function setupDrawingPanel(panelId) {
+  const wrap=document.getElementById(panelId); if(!wrap) return;
+
+  wrap.addEventListener('mousedown', e=>{
+    if(drawTool==='none'||e.button!==0||!connected) return;
+    e.stopPropagation();
+    const tf=panelId==='cw'?(splitMode?'1Hour':timeframe):'1Day';
+    const d=cacheGet(selected+'|'+tf); if(!d) return;
+    const total=d.candles.length;
+    const {start,end}=getView(panelId,total);
+    const candles=d.candles.slice(start,end), signals=d.signals.slice(start,end);
+    const rect=wrap.getBoundingClientRect();
+    const {barIdx,price}=pixelToBar(e.clientX-rect.left,e.clientY-rect.top,candles,signals,wrap.clientWidth,wrap.clientHeight);
+    const absBar=barIdx+start;
+
+    if(drawTool==='text') {
+      const popup=document.getElementById('draw-text-popup');
+      popup._pending={panelId,p1:{barIdx:absBar,price}};
+      popup.style.left=(e.clientX+8)+'px'; popup.style.top=(e.clientY-20)+'px';
+      popup.style.display='flex';
+      document.getElementById('draw-text-input').value='';
+      setTimeout(()=>document.getElementById('draw-text-input').focus(),50);
+      return;
+    }
+    if(drawTool==='hline') {
+      const id=Date.now()+'_'+Math.random().toString(36).slice(2,6);
+      drawings[panelId].set(id,{id,type:'hline',color:drawColor,p1:{barIdx:absBar,price}});
+      saveDrawings(panelId); renderDrawings(panelId); return;
+    }
+    drawActive={panelId,type:drawTool,color:drawColor,p1:{barIdx:absBar,price},p2:null,
+      id:Date.now()+'_'+Math.random().toString(36).slice(2,6)};
+  });
+
+  wrap.addEventListener('mousemove', e=>{
+    if(!drawActive||drawActive.panelId!==panelId) return;
+    const tf=panelId==='cw'?(splitMode?'1Hour':timeframe):'1Day';
+    const d=cacheGet(selected+'|'+tf); if(!d) return;
+    const {start,end}=getView(panelId,d.candles.length);
+    const candles=d.candles.slice(start,end), signals=d.signals.slice(start,end);
+    const rect=wrap.getBoundingClientRect();
+    const {barIdx,price}=pixelToBar(e.clientX-rect.left,e.clientY-rect.top,candles,signals,wrap.clientWidth,wrap.clientHeight);
+    drawHover={barIdx:barIdx+start,price};
+    renderDrawings(panelId);
+  });
+
+  wrap.addEventListener('mouseup', e=>{
+    if(!drawActive||drawActive.panelId!==panelId||e.button!==0) return;
+    const tf=panelId==='cw'?(splitMode?'1Hour':timeframe):'1Day';
+    const d=cacheGet(selected+'|'+tf); if(!d) return;
+    const {start,end}=getView(panelId,d.candles.length);
+    const candles=d.candles.slice(start,end), signals=d.signals.slice(start,end);
+    const rect=wrap.getBoundingClientRect();
+    const {barIdx,price}=pixelToBar(e.clientX-rect.left,e.clientY-rect.top,candles,signals,wrap.clientWidth,wrap.clientHeight);
+    const dr={...drawActive,p2:{barIdx:barIdx+start,price}};
+    drawings[panelId].set(dr.id,dr);
+    saveDrawings(panelId); drawActive=null; drawHover=null;
+    renderDrawings(panelId);
+  });
+}
+
+setupDrawingPanel('cw'); setupDrawingPanel('cw2');
+
+// Text popup
+document.getElementById('btn-text-ok').addEventListener('click',()=>{
+  const popup=document.getElementById('draw-text-popup');
+  const txt=document.getElementById('draw-text-input').value.trim();
+  if(txt&&popup._pending) {
+    const {panelId,p1}=popup._pending;
+    const id=Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    drawings[panelId].set(id,{id,type:'text',color:drawColor,p1,text:txt});
+    saveDrawings(panelId); renderDrawings(panelId);
+  }
+  popup.style.display='none'; popup._pending=null;
+});
+document.getElementById('btn-text-cancel').addEventListener('click',()=>{
+  document.getElementById('draw-text-popup').style.display='none';
+  document.getElementById('draw-text-popup')._pending=null;
+});
+document.getElementById('draw-text-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('btn-text-ok').click();
+  if(e.key==='Escape') document.getElementById('btn-text-cancel').click();
+});
+
+// Toolbar
+document.querySelectorAll('.dt-btn[data-tool]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    drawTool=btn.dataset.tool;
+    document.querySelectorAll('.dt-btn[data-tool]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.body.classList.toggle('drawing-mode',drawTool!=='none');
+  });
+});
+document.querySelectorAll('.dt-color').forEach(el=>{
+  el.addEventListener('click',()=>{
+    drawColor=el.dataset.c;
+    document.querySelectorAll('.dt-color').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
+  });
+});
+document.getElementById('btn-undo-draw').addEventListener('click',()=>{
+  ['cw','cw2'].forEach(pid=>{
+    const keys=[...drawings[pid].keys()];
+    if(keys.length){drawings[pid].delete(keys[keys.length-1]);saveDrawings(pid);renderDrawings(pid);}
+  });
+});
+document.getElementById('btn-clear-draw').addEventListener('click',()=>{
+  if(!confirm('Clear all drawings on current chart?')) return;
+  ['cw','cw2'].forEach(pid=>{drawings[pid].clear();saveDrawings(pid);renderDrawings(pid);});
+});
+
+// Init: load drawings for default ticker
+loadAllDrawings();
 
 document.getElementById('btn-edit').addEventListener('click',()=>{
   const p=document.getElementById('edit-panel');
