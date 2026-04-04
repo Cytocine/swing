@@ -368,6 +368,166 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
 .dc-toast-detail{font-size:9px;color:#64748b;margin-top:1px;}
 .dc-toast-x{position:absolute;top:8px;right:9px;background:none;border:none;color:#374151;cursor:pointer;font-size:11px;line-height:1;padding:2px;}
 .dc-toast-x:hover{color:#94a3b8;}
+
+/* ═══════════════════════════════════════════
+   MOBILE RESPONSIVE — breakpoint ≤ 768px
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Allow page to scroll vertically on mobile */
+  html, body { overflow: auto; height: auto; }
+  body { font-size: 11px; }
+
+  /* ── CRED BAR: stack keys vertically, full-width inputs ── */
+  #cred-bar { padding: 10px 12px; gap: 8px; }
+  .ci { width: 100%; font-size: 12px; padding: 8px 10px; }
+  .cg { width: 100%; }
+  #btn-connect, #btn-forget {
+    width: 100%; padding: 10px; font-size: 12px;
+    align-self: stretch; text-align: center;
+  }
+  #conn-st { align-self: center; }
+  #cred-hint { font-size: 9px; width: 100%; }
+
+  /* ── TOPBAR: 2-row mobile layout ── */
+  #topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+    row-gap: 8px;
+  }
+  #logo-txt { font-size: 13px; }
+  /* Hide ticker stats bar (too cramped on mobile) */
+  #ts { display: none; }
+  /* Hide split + hide-sidebar buttons on mobile (useless on small screen) */
+  #btn-split, #btn-list { display: none; }
+  /* Make TF and reload buttons touch-friendly */
+  .tf-btn { padding: 7px 14px; font-size: 10px; }
+  .tb { padding: 7px 12px; font-size: 10px; }
+  #btn-reload { padding: 7px 12px; }
+  #btn-topbar-scan, #discord-btn { padding: 7px 12px; font-size: 10px; }
+
+  /* ── PARAMS BAR: hide on mobile, accessible via long-press or collapse ── */
+  #params-bar { display: none; }
+
+  /* ── EDIT PANEL: full width ── */
+  #edit-panel { flex-direction: column; }
+  #ticker-input { width: 100%; }
+  .eb { padding-top: 0; flex-direction: row; flex-wrap: wrap; }
+
+  /* ── BODY: sidebar hidden by default, chart takes full width ── */
+  #body { flex-direction: column; overflow: visible; height: auto; }
+  #sidebar {
+    width: 100% !important;
+    opacity: 1 !important;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease, opacity .2s;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  #sidebar.mobile-open {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  #sidebar.hidden { max-height: 0; opacity: 1 !important; width: 100% !important; }
+
+  /* ── MAIN: fill viewport, allow natural height ── */
+  #main {
+    flex: none;
+    padding: 8px 10px 6px;
+    gap: 8px;
+    overflow: visible;
+  }
+
+  /* ── CHART HEADER: compact ── */
+  #ch { flex-wrap: wrap; gap: 6px; }
+  #ch-ticker { font-size: 20px; }
+  #legend { display: none; } /* hide legend on mobile - too much space */
+
+  /* ── CHART ROW: fixed height on mobile ── */
+  #charts-row {
+    height: 52vw;
+    min-height: 220px;
+    max-height: 340px;
+    flex: none;
+  }
+
+  /* ── DRAWING TOOLBAR: scrollable horizontal strip ── */
+  #draw-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 5px 10px;
+    gap: 5px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #draw-toolbar::-webkit-scrollbar { display: none; }
+  .dt-btn { padding: 5px 9px; font-size: 9px; white-space: nowrap; }
+
+  /* ── SCANNER STRIP: taller touch targets ── */
+  #mini-wrap { padding: 7px 10px 5px; margin: 0 -10px -6px; }
+  #mini-hdr { flex-wrap: wrap; gap: 4px; }
+  .mini-filter { padding: 5px 10px; font-size: 9px; }
+  #mini-strip { gap: 6px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+  .mc { width: 140px; }
+
+  /* ── SCANNER PANEL (edit): full width ── */
+  #scanner-panel { margin: 0 -10px; flex-direction: column; }
+  #scanner-input { width: 100%; }
+
+  /* ── STATUS BAR: hide on mobile ── */
+  #sb { display: none; }
+
+  /* ── DISCORD MODAL: full screen on mobile ── */
+  #dc-box { padding: 20px 18px; border-radius: 10px; }
+  #dc-box h3 { font-size: 14px; }
+  #dc-box p { font-size: 10px; }
+  #dc-webhook { font-size: 12px; padding: 10px; }
+  .dc-btns { justify-content: stretch; }
+  .dc-btns button { flex: 1; padding: 10px 8px; font-size: 11px; }
+
+  /* ── TOAST: full width bottom ── */
+  #dc-toast-wrap {
+    left: 10px; right: 10px; width: auto;
+    bottom: 16px;
+  }
+
+  /* ── SCAN MODAL: full screen ── */
+  #scan-box { width: 100%; height: 100vh; border-radius: 0; max-width: 100vw; }
+  #scan-filters { gap: 10px; }
+  .sf-inp { font-size: 13px; padding: 7px 8px; width: 80px; }
+
+  /* ── TOUCH: larger tap targets ── */
+  .tr { padding: 10px 10px; min-height: 44px; }
+  .sort-btn { padding: 6px 8px; font-size: 9px; min-height: 32px; }
+}
+
+/* ── MOBILE WATCHLIST TOGGLE BUTTON ── */
+#btn-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  #btn-mobile-list {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: var(--fm);
+    font-size: 10px;
+    padding: 7px 12px;
+    cursor: pointer;
+    letter-spacing: .5px;
+  }
+  #btn-mobile-list.active {
+    background: var(--bull-dim);
+    border-color: rgba(38,166,154,.4);
+    color: var(--bull);
+  }
+}
 </style>
 <body>
 
@@ -409,6 +569,7 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
   <button class="tb" id="btn-list">◀ HIDE</button>
   <button id="btn-topbar-scan" disabled title="Scan market for Long/PB Long signals with price & volume filters">⚡ SCAN MARKET</button>
   <button id="discord-btn" title="Send 1D Long/Short entry signals to a Discord channel via webhook">📡 DISCORD</button>
+  <button id="btn-mobile-list" title="Toggle watchlist">☰ LIST</button>
 </div>
 
 <!-- DISCORD WEBHOOK MODAL -->
@@ -2643,6 +2804,110 @@ document.getElementById('sf-tickers').addEventListener('input',e=>{
 
 new ResizeObserver(()=>renderMain()).observe(document.getElementById('cw'));
 buildSidebar(); buildMini(); updateHeader(); updateSB(); renderMain();
+
+// ═══════════════════════════════════════════
+// MOBILE RESPONSIVE JS
+// ═══════════════════════════════════════════
+const isMobile = () => window.innerWidth <= 768;
+
+// ── Mobile watchlist toggle ──
+document.getElementById('btn-mobile-list').addEventListener('click', () => {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('btn-mobile-list');
+  const open = sb.classList.toggle('mobile-open');
+  btn.classList.toggle('active', open);
+  btn.textContent = open ? '✕ CLOSE' : '☰ LIST';
+});
+
+// ── On mobile, auto-close sidebar when a ticker is tapped ──
+document.getElementById('sb-list').addEventListener('click', () => {
+  if (!isMobile()) return;
+  const sb = document.getElementById('sidebar');
+  sb.classList.remove('mobile-open');
+  const btn = document.getElementById('btn-mobile-list');
+  btn.classList.remove('active');
+  btn.textContent = '☰ LIST';
+});
+
+// ── Pinch-to-zoom & swipe on chart canvas (touch events) ──
+(function attachTouchHandlers() {
+  ['cw', 'cw2'].forEach(panelId => {
+    const wrap = document.getElementById(panelId);
+    if (!wrap) return;
+
+    let lastDist = null;
+    let lastX = null;
+
+    wrap.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        lastDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      } else if (e.touches.length === 1) {
+        lastX = e.touches[0].clientX;
+      }
+    }, { passive: true });
+
+    wrap.addEventListener('touchmove', e => {
+      const tf = panelId === 'cw' ? (typeof splitMode !== 'undefined' && splitMode ? '1Hour' : timeframe) : '1Day';
+      const key = (panelId === 'cw' ? selected : selected) + '|' + tf;
+      const views = window._viewState || {};
+      if (!views[panelId]) views[panelId] = {};
+      window._viewState = views;
+      const v = views[panelId];
+
+      if (e.touches.length === 2 && lastDist !== null) {
+        // Pinch zoom
+        e.preventDefault();
+        const newDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const ratio = newDist / lastDist;
+        lastDist = newDist;
+        // Adjust zoom by scaling viewBars (fewer bars = zoom in)
+        const d = cacheGet(selected + '|' + tf);
+        if (!d) return;
+        const total = d.candles.length;
+        const curBars = (v.viewBars || Math.min(P.bars, total));
+        const newBars = Math.max(10, Math.min(total, Math.round(curBars / ratio)));
+        v.viewBars = newBars;
+        renderMain();
+      } else if (e.touches.length === 1 && lastX !== null) {
+        // Swipe pan
+        e.preventDefault();
+        const dx = e.touches[0].clientX - lastX;
+        lastX = e.touches[0].clientX;
+        const d = cacheGet(selected + '|' + tf);
+        if (!d) return;
+        const total = d.candles.length;
+        const curBars = (v.viewBars || Math.min(P.bars, total));
+        const barsPerPx = curBars / (wrap.offsetWidth || 300);
+        const shift = Math.round(dx * barsPerPx);
+        const curStart = (v.viewStart !== undefined) ? v.viewStart : Math.max(0, total - curBars);
+        const newStart = Math.max(0, Math.min(total - curBars, curStart - shift));
+        v.viewStart = newStart;
+        renderMain();
+      }
+    }, { passive: false });
+
+    wrap.addEventListener('touchend', () => {
+      lastDist = null;
+      lastX = null;
+    }, { passive: true });
+  });
+})();
+
+// ── On resize: re-render chart, close sidebar if going desktop ──
+window.addEventListener('resize', () => {
+  renderMain();
+  if (!isMobile()) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('btn-mobile-list').classList.remove('active');
+    document.getElementById('btn-mobile-list').textContent = '☰ LIST';
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // DISCORD ALERT SYSTEM — 1D Long Entry & Short Entry only
