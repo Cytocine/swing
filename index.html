@@ -330,6 +330,44 @@ body.drawing-mode .cw-wrap:active{cursor:crosshair!important;}
 body.split-mode #split-divider{display:block;}
 body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
 #tip2{position:absolute;background:rgba(7,10,15,.97);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;display:none;z-index:20;line-height:1.9;min-width:140px;backdrop-filter:blur(8px);}
+
+/* ── DISCORD ALERT SYSTEM ── */
+#discord-btn{background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.35);border-radius:6px;color:#7289da;font-family:var(--fm);font-size:10px;font-weight:700;padding:5px 13px;cursor:pointer;letter-spacing:.5px;transition:all .2s;white-space:nowrap;flex-shrink:0;}
+#discord-btn:hover{background:rgba(88,101,242,.25);border-color:rgba(88,101,242,.6);color:#adb7ff;}
+#discord-btn.active{background:rgba(88,101,242,.22);border-color:rgba(88,101,242,.65);color:#adb7ff;box-shadow:0 0 10px rgba(88,101,242,.2);}
+#discord-btn.active::before{content:"● ";font-size:8px;animation:dpulse 1.4s ease-in-out infinite;}
+@keyframes dpulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+#dc-modal{position:fixed;inset:0;background:rgba(4,6,10,.9);z-index:400;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+#dc-modal.open{display:flex;}
+#dc-box{background:#0b0f18;border:1px solid rgba(88,101,242,.28);border-radius:13px;padding:28px 30px;width:430px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,.85);}
+#dc-box h3{font-family:var(--fd);font-size:16px;font-weight:900;color:#f1f5f9;letter-spacing:.5px;margin-bottom:5px;}
+#dc-box p{font-size:9px;color:#64748b;line-height:1.75;margin-bottom:18px;}
+#dc-wh-lbl{display:block;font-size:8px;color:#94a3b8;letter-spacing:1.3px;margin-bottom:6px;}
+#dc-webhook{width:100%;background:#070a10;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#e2e8f0;font-family:var(--fm);font-size:10px;padding:9px 11px;outline:none;box-sizing:border-box;transition:border-color .15s;}
+#dc-webhook:focus{border-color:rgba(88,101,242,.55);}
+#dc-wh-hint{font-size:8px;color:#2d3748;margin-top:6px;margin-bottom:20px;line-height:1.65;}
+.dc-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+#dc-save{background:rgba(88,101,242,.25);border:1px solid rgba(88,101,242,.5);border-radius:6px;color:#adb7ff;font-family:var(--fm);font-size:10px;font-weight:700;padding:7px 18px;cursor:pointer;letter-spacing:.5px;transition:all .15s;}
+#dc-save:hover{background:rgba(88,101,242,.4);}
+#dc-disable{background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.3);border-radius:6px;color:#EF5350;font-family:var(--fm);font-size:10px;font-weight:700;padding:7px 14px;cursor:pointer;display:none;}
+#dc-cancel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:6px;color:#4b5563;font-family:var(--fm);font-size:10px;padding:7px 14px;cursor:pointer;}
+#dc-test{background:rgba(38,166,154,.1);border:1px solid rgba(38,166,154,.3);border-radius:6px;color:#26A69A;font-family:var(--fm);font-size:10px;font-weight:700;padding:7px 14px;cursor:pointer;transition:all .15s;}
+#dc-test:hover{background:rgba(38,166,154,.22);}
+#dc-status{font-size:9px;margin-top:11px;min-height:14px;letter-spacing:.5px;}
+#dc-toast-wrap{position:fixed;bottom:34px;right:16px;display:flex;flex-direction:column;gap:7px;z-index:9999;pointer-events:none;width:292px;}
+.dc-toast{position:relative;background:#0c1018;border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:11px 32px 11px 14px;font-family:var(--fm);font-size:10px;line-height:1.75;box-shadow:0 8px 30px rgba(0,0,0,.75);pointer-events:auto;opacity:0;transform:translateX(20px);transition:opacity .22s,transform .22s;}
+.dc-toast.show{opacity:1;transform:translateX(0);}
+.dc-toast.hide{opacity:0;transform:translateX(20px);}
+.dc-toast-stripe{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:9px 0 0 9px;}
+.dc-toast.t-long .dc-toast-stripe{background:#00FF99;}
+.dc-toast.t-short .dc-toast-stripe{background:#FF5555;}
+.dc-toast-sym{font-size:13px;font-weight:700;color:#f1f5f9;}
+.dc-toast-sig{font-weight:700;font-size:10px;margin-left:7px;}
+.dc-toast.t-long .dc-toast-sig{color:#00FF99;}
+.dc-toast.t-short .dc-toast-sig{color:#FF5555;}
+.dc-toast-detail{font-size:9px;color:#64748b;margin-top:1px;}
+.dc-toast-x{position:absolute;top:8px;right:9px;background:none;border:none;color:#374151;cursor:pointer;font-size:11px;line-height:1;padding:2px;}
+.dc-toast-x:hover{color:#94a3b8;}
 </style>
 <body>
 
@@ -370,7 +408,29 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
   <button class="tb" id="btn-edit">✎ LIST</button>
   <button class="tb" id="btn-list">◀ HIDE</button>
   <button id="btn-topbar-scan" disabled title="Scan market for Long/PB Long signals with price & volume filters">⚡ SCAN MARKET</button>
+  <button id="discord-btn" title="Send 1D Long/Short entry signals to a Discord channel via webhook">📡 DISCORD</button>
 </div>
+
+<!-- DISCORD WEBHOOK MODAL -->
+<div id="dc-modal">
+  <div id="dc-box">
+    <h3>📡 Discord Alerts</h3>
+    <p>Paste your Discord webhook URL. When a 1D Long or Short entry signal fires on any watchlist ticker, a rich embed is posted to your channel automatically on every Reload.</p>
+    <label id="dc-wh-lbl">WEBHOOK URL</label>
+    <input id="dc-webhook" type="text" placeholder="https://discord.com/api/webhooks/..." autocomplete="off" spellcheck="false"/>
+    <div id="dc-wh-hint">Discord → Server Settings → Integrations → Webhooks → New Webhook → Copy URL<br>Saved in this browser only — never sent anywhere except Discord.</div>
+    <div class="dc-btns">
+      <button id="dc-cancel">CANCEL</button>
+      <button id="dc-disable">⛔ DISABLE</button>
+      <button id="dc-test">⚡ TEST</button>
+      <button id="dc-save">SAVE &amp; ENABLE</button>
+    </div>
+    <div id="dc-status"></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="dc-toast-wrap"></div>
 
 <!-- PARAMS BAR -->
 <div id="params-bar">
@@ -2583,6 +2643,182 @@ document.getElementById('sf-tickers').addEventListener('input',e=>{
 
 new ResizeObserver(()=>renderMain()).observe(document.getElementById('cw'));
 buildSidebar(); buildMini(); updateHeader(); updateSB(); renderMain();
+
+// ═══════════════════════════════════════════════════════════════
+// DISCORD ALERT SYSTEM — 1D Long Entry & Short Entry only
+// ═══════════════════════════════════════════════════════════════
+const DC_LS_KEY = 'fcc_discord_webhook';
+let discordEnabled = false;
+let discordWebhook = '';
+const dcAlertState = {};  // ticker -> { signalLong: barIdx, signalShort: barIdx }
+
+// ── Persist webhook in localStorage ──
+function dcSaveWebhook(url) {
+  try { localStorage.setItem(DC_LS_KEY, url); } catch(e) {}
+}
+function dcLoadWebhook() {
+  try { return localStorage.getItem(DC_LS_KEY) || ''; } catch(e) { return ''; }
+}
+function dcClearWebhook() {
+  try { localStorage.removeItem(DC_LS_KEY); } catch(e) {}
+}
+
+// ── On-screen toast ──
+function dcShowToast(ticker, isLong, price, sent) {
+  const wrap = document.getElementById('dc-toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'dc-toast ' + (isLong ? 't-long' : 't-short');
+  const label    = isLong ? '▲ LONG ENTRY' : '▼ SHORT ENTRY';
+  const priceStr = price  ? ' · $' + price.toFixed(2) : '';
+  const sentStr  = sent   ? '✓ Sent to Discord' : '⚠ Discord send failed';
+  t.innerHTML =
+    '<div class="dc-toast-stripe"></div>' +
+    '<span class="dc-toast-sym">' + ticker + '</span>' +
+    '<span class="dc-toast-sig">' + label + '</span>' +
+    '<div class="dc-toast-detail">1D signal' + priceStr + ' — ' + sentStr + '</div>' +
+    '<button class="dc-toast-x">✕</button>';
+  t.querySelector('.dc-toast-x').addEventListener('click', () => dcDismiss(t));
+  wrap.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  setTimeout(() => dcDismiss(t), 9000);
+}
+function dcDismiss(t) {
+  t.classList.remove('show'); t.classList.add('hide');
+  setTimeout(() => t.remove(), 250);
+}
+
+// ── Send rich embed to Discord ──
+async function sendDiscordEmbed(ticker, isLong, price, candles) {
+  if (!discordWebhook) return false;
+  const color    = isLong ? 0x00FF99 : 0xFF5555;
+  const label    = isLong ? '▲ LONG ENTRY' : '▼ SHORT ENTRY';
+  const emoji    = isLong ? '🟢' : '🔴';
+  const priceStr = price  ? '$' + price.toFixed(2) : '—';
+  const recentBars = candles.slice(-3).map(c => {
+    const chg = ((c.close - c.open) / c.open * 100).toFixed(2);
+    return (c.close >= c.open ? '▲' : '▼') + ' $' + c.close.toFixed(2) + ' (' + (chg >= 0 ? '+' : '') + chg + '%)';
+  }).join('\n');
+  const payload = {
+    embeds: [{
+      title: emoji + ' 1D Signal — ' + ticker,
+      description: '**' + label + '** fired on the **Daily** timeframe',
+      color,
+      fields: [
+        { name: 'Price',      value: priceStr,       inline: true  },
+        { name: 'Timeframe',  value: '1D (Daily)',   inline: true  },
+        { name: 'Signal',     value: label,          inline: true  },
+        { name: 'Last 3 Bars',value: recentBars||'—',inline: false },
+      ],
+      footer: { text: 'Full Cloud Cross · EMA ' + P.shortLen + '/' + P.longLen + '/' + P.vlongLen },
+      timestamp: new Date().toISOString(),
+    }]
+  };
+  try {
+    const res = await fetch(discordWebhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+// ── Core: compare latest 1D signals against last known state ──
+async function checkDiscordAlerts(isBaseline) {
+  if (!discordEnabled || !discordWebhook) return;
+  const allTickers = [...new Set([...tickers, ...scannerTickers])];
+  for (const ticker of allTickers) {
+    const d = cacheGet(ticker + '|1Day');
+    if (!d || !d.signals || !d.signals.length) continue;
+    const sigs = d.signals;
+    const prev = dcAlertState[ticker] || { signalLong: -1, signalShort: -1 };
+    let latestLong = -1, latestShort = -1;
+    for (let i = sigs.length - 1; i >= 0; i--) {
+      if (latestLong  === -1 && sigs[i].signalLong)  latestLong  = i;
+      if (latestShort === -1 && sigs[i].signalShort) latestShort = i;
+      if (latestLong !== -1 && latestShort !== -1) break;
+    }
+    const price = d.candles[d.candles.length - 1]?.close;
+    if (!isBaseline) {
+      if (latestLong  !== -1 && latestLong  !== prev.signalLong)  { const ok = await sendDiscordEmbed(ticker, true,  price, d.candles); dcShowToast(ticker, true,  price, ok); }
+      if (latestShort !== -1 && latestShort !== prev.signalShort) { const ok = await sendDiscordEmbed(ticker, false, price, d.candles); dcShowToast(ticker, false, price, ok); }
+    }
+    dcAlertState[ticker] = { signalLong: latestLong, signalShort: latestShort };
+  }
+}
+
+// ── Patch loadAll to run check after every reload ──
+const _origLoadAll = loadAll;
+window.loadAll = async function(clearCache) {
+  await _origLoadAll(clearCache);
+  await checkDiscordAlerts(false);
+};
+
+// ── UI helpers ──
+function setDcStatus(msg, color) {
+  const el = document.getElementById('dc-status');
+  el.textContent = msg; el.style.color = color || '#64748b';
+}
+function dcSetActiveUI(active) {
+  document.getElementById('discord-btn').classList.toggle('active', active);
+  document.getElementById('discord-btn').textContent = active ? '📡 DISCORD ON' : '📡 DISCORD';
+  document.getElementById('dc-disable').style.display = active ? '' : 'none';
+}
+
+// ── Open modal ──
+document.getElementById('discord-btn').addEventListener('click', () => {
+  document.getElementById('dc-webhook').value = discordWebhook || '';
+  setDcStatus('');
+  document.getElementById('dc-modal').classList.add('open');
+});
+document.getElementById('dc-cancel').addEventListener('click', () =>
+  document.getElementById('dc-modal').classList.remove('open'));
+document.getElementById('dc-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('dc-modal'))
+    document.getElementById('dc-modal').classList.remove('open');
+});
+
+// ── Test ──
+document.getElementById('dc-test').addEventListener('click', async () => {
+  const url = document.getElementById('dc-webhook').value.trim();
+  if (!url) { setDcStatus('⚠ Paste a webhook URL first', '#EF5350'); return; }
+  setDcStatus('Sending test…', '#fbbf24');
+  const payload = { embeds: [{ title: '✅ Full Cloud Cross — Test Alert', description: 'Webhook connected! 1D Long & Short entry signals will appear here.', color: 0x5865F2, footer: { text: 'Full Cloud Cross · EMA ' + P.shortLen + '/' + P.longLen + '/' + P.vlongLen }, timestamp: new Date().toISOString() }] };
+  try {
+    const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    setDcStatus(res.ok ? '✓ Test sent! Check your Discord channel.' : '✗ Discord returned ' + res.status + ' — check the URL', res.ok ? '#26A69A' : '#EF5350');
+  } catch(e) { setDcStatus('✗ Network error — is the URL correct?', '#EF5350'); }
+});
+
+// ── Save & Enable ──
+document.getElementById('dc-save').addEventListener('click', () => {
+  const url = document.getElementById('dc-webhook').value.trim();
+  if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
+    setDcStatus('⚠ Must be a valid https://discord.com/api/webhooks/ URL', '#EF5350'); return;
+  }
+  discordWebhook = url; discordEnabled = true;
+  dcSaveWebhook(url);
+  dcSetActiveUI(true);
+  document.getElementById('dc-modal').classList.remove('open');
+  checkDiscordAlerts(true);  // seed baseline silently
+});
+
+// ── Disable ──
+document.getElementById('dc-disable').addEventListener('click', () => {
+  discordEnabled = false; discordWebhook = '';
+  dcClearWebhook();
+  dcSetActiveUI(false);
+  document.getElementById('dc-modal').classList.remove('open');
+});
+
+// ── Auto-restore saved webhook on page load ──
+(()=>{
+  const saved = dcLoadWebhook();
+  if (saved && saved.startsWith('https://discord.com/api/webhooks/')) {
+    discordWebhook = saved; discordEnabled = true;
+    dcSetActiveUI(true);
+  }
+})();
 </script>
 </body>
 </html>
