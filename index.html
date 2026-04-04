@@ -342,8 +342,9 @@ body.split-mode #tf-grp{opacity:.5;pointer-events:none;}
   <div class="cg"><span class="cl">API KEY ID</span><input class="ci" id="api-key" type="text" placeholder="PKXXXXXXXXXXXXXXXXXXXXXXXX" autocomplete="off" spellcheck="false"/></div>
   <div class="cg"><span class="cl">SECRET KEY</span><input class="ci" id="api-secret" type="password" placeholder="••••••••••••••••••••••••••••••••••••••••" autocomplete="off"/></div>
   <button id="btn-connect">⚡ CONNECT</button>
+  <button id="btn-forget" title="Clear saved keys from this browser" style="background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.25);border-radius:6px;color:#EF5350;font-family:var(--fm);font-size:10px;font-weight:700;padding:8px 12px;cursor:pointer;letter-spacing:.5px;align-self:flex-end;display:none;transition:all .15s;">🗑 FORGET</button>
   <div id="conn-st" class="st-idle">DISCONNECTED</div>
-  <div id="cred-hint">Paper · data.alpaca.markets · Keys in memory only, never stored</div>
+  <div id="cred-hint">Paper · data.alpaca.markets · Keys saved in <strong style="color:#4b9e99">this browser only</strong> — never sent to any server</div>
 </div>
 
 <!-- TOPBAR -->
@@ -1680,14 +1681,28 @@ function clearCrosshair(xhairId) {
 // ═══════════════════════════════════════════
 // CONTROLS
 // ═══════════════════════════════════════════
-document.getElementById('btn-connect').addEventListener('click', async ()=>{
-  const k=document.getElementById('api-key').value.trim();
-  const s=document.getElementById('api-secret').value.trim();
+// ── localStorage key persistence ──
+const LS_KEY = 'fcc_alpaca_key';
+const LS_SEC = 'fcc_alpaca_secret';
+
+function saveCredentials(k, s) {
+  try { localStorage.setItem(LS_KEY, k); localStorage.setItem(LS_SEC, s); } catch(e) {}
+}
+function loadCredentials() {
+  try { return { k: localStorage.getItem(LS_KEY)||'', s: localStorage.getItem(LS_SEC)||'' }; } catch(e) { return {k:'',s:''}; }
+}
+function clearCredentials() {
+  try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_SEC); } catch(e) {}
+}
+function showForgetBtn(show) {
+  document.getElementById('btn-forget').style.display = show ? '' : 'none';
+}
+
+async function doConnect(k, s) {
   if(!k||!s){setSt('error','MISSING KEYS');return;}
   apiKey=k; apiSecret=s;
   setSt('loading','VERIFYING…');
   document.getElementById('btn-connect').disabled=true;
-  // Clear entire cache on (re)connect so everything re-fetches fresh
   Object.keys(cache).forEach(k=>delete cache[k]);
   try {
     await fetchBars(tickers[0], timeframe);
@@ -1698,13 +1713,48 @@ document.getElementById('btn-connect').addEventListener('click', async ()=>{
     document.getElementById('btn-reload').disabled=false;
     document.getElementById('btn-topbar-scan').disabled=false;
     document.getElementById('cred-bar').classList.add('connected');
+    saveCredentials(k, s);
+    showForgetBtn(true);
     await loadAll();
   } catch(e) {
     connected=false;
     setSt('error', e.message.length>35?'AUTH FAILED':e.message.toUpperCase());
     document.getElementById('btn-connect').disabled=false;
   }
+}
+
+document.getElementById('btn-connect').addEventListener('click', async ()=>{
+  const k=document.getElementById('api-key').value.trim();
+  const s=document.getElementById('api-secret').value.trim();
+  await doConnect(k, s);
 });
+
+document.getElementById('btn-forget').addEventListener('click', ()=>{
+  if(!confirm('Remove saved API keys from this browser?')) return;
+  clearCredentials();
+  document.getElementById('api-key').value='';
+  document.getElementById('api-secret').value='';
+  showForgetBtn(false);
+  setSt('idle','DISCONNECTED');
+  document.getElementById('conn-st').className='st-idle';
+  connected=false; apiKey=''; apiSecret='';
+  document.getElementById('btn-connect').textContent='⚡ CONNECT';
+  document.getElementById('btn-reload').disabled=true;
+  document.getElementById('btn-topbar-scan').disabled=true;
+  document.getElementById('cred-bar').classList.remove('connected');
+});
+
+// Auto-connect on page load if keys are saved
+(async ()=>{
+  const {k, s} = loadCredentials();
+  if(k && s){
+    document.getElementById('api-key').value = k;
+    document.getElementById('api-secret').value = s;
+    showForgetBtn(true);
+    setSt('loading','AUTO-CONNECTING…');
+    await doConnect(k, s);
+  }
+})();
 
 // Params apply
 document.getElementById('btn-apply-params').addEventListener('click', ()=>{
